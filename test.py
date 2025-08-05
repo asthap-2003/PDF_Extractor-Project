@@ -14473,7 +14473,7 @@ def index():
         </script>
     </body>
     </html>
-    '''
+    '''VISU
 
 if __name__ == '__main__':
     # Database and tables are already created by setup_database.py
