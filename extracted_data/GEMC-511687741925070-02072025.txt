@@ -1,0 +1,70 @@
+GEM CONTRACT DATA EXTRACTION REPORT
+===============================================
+File: GEMC-511687741925070-02072025.pdf
+Contract ID: 31599029-1b2c-4968-a5a5-7a8da4860db4
+Extraction Date: 2025-08-05 15:14:31
+
+ORGANIZATION DETAILS:
+--------------------
+Type: Central Government
+Ministry: Ministry of Health and Family Welfare
+Department: Department of Health and Family Welfare
+Organization Name: None
+Office Zone: Safdarjung Hospital
+
+BUYER DETAILS:
+--------------
+Designation: oic
+Contact No: : 011-26730512-0512
+Email ID: procuresurgical@vmmc-sjh.nic.in
+GSTIN: -
+Address: HOSPITAL NEW DELHI-110029,
+
+SELLER DETAILS:
+---------------
+GeM Seller ID: BDB7180000104721
+Company Name: PHARMA SURGE IMPEX
+Contact No: : 09811860172
+Email ID: info@pharmasurgeimpex.com
+Address: HOSPITAL NEW DELHI-110029,
+MSME Registration Number: -
+GSTIN: 07AADPG6722G1ZZ
+
+PRODUCT DETAILS:
+---------------
+Total Order Value: ₹5,796,000
+
+Products Found: 3
+
+Product 1:
+-----------
+Product Name: UNIPRO--BANSHI MEDICARE PRIVATE LIMITED Disposable Surgical
+Brand: Unregistered Brand
+Brand Type: Unregistered Brand
+Catalogue Status: Catalogue not verified by OEM 210,000 NA 2,704,800
+Selling As: Reseller not verified by OEM
+Category Name & Quadrant: Disposable Surgical Rubber Gloves (Q2)
+Model: 611
+HSN Code: HSN not specified by seller
+
+Product 2:
+-----------
+Product Name: UNIPRO--BANSHI MEDICARE PRIVATE LIMITED Disposable Surgical
+Brand: Unregistered Brand
+Brand Type: Unregistered Brand
+Catalogue Status: Catalogue not verified by OEM 150,000
+Selling As: Reseller not verified by OEM
+Category Name & Quadrant: Disposable Surgical Rubber Gloves (Q2)
+Model: 611
+HSN Code: HSN not specified by seller
+
+Product 3:
+-----------
+Product Name: UNIPRO--BANSHI MEDICARE PRIVATE LIMITED Disposable Surgical
+Brand: Unregistered Brand
+Brand Type: Unregistered Brand
+Catalogue Status: Catalogue not verified by OEM 90,000 pairs 12.88 NA 1,159,200
+Selling As: Reseller not verified by OEM
+Category Name & Quadrant: Disposable Surgical Rubber Gloves (Q2)
+Model: 611
+HSN Code: HSN not specified by seller

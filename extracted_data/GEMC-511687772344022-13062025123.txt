@@ -1,0 +1,48 @@
+GEM CONTRACT DATA EXTRACTION REPORT
+===============================================
+File: GEMC-511687772344022-13062025123.pdf
+Contract ID: 9684a251-03e3-4b60-abc7-7aa1615352af
+Extraction Date: 2025-08-05 15:21:50
+
+ORGANIZATION DETAILS:
+--------------------
+Type: Central Autonomous
+Ministry: Ministry of Health and Family Welfare
+Department: Department of Health and Family Welfare
+Organization Name: All India Institute of Medical Sciences
+Office Zone: Aiims, New Delhi 1st Floor , New Pvt. Ward, Store Section
+
+BUYER DETAILS:
+--------------
+Designation: Stores Keeper
+Contact No: : 011-26546618-6618
+Email ID: sumitkuhar@aiims.gov.in
+GSTIN: -
+Address: Ansari Nagar, New Delhi,,
+
+SELLER DETAILS:
+---------------
+GeM Seller ID: EDDF180000103190
+Company Name: M/S ANONDITA HEALTH CARE
+Contact No: : 09891929391
+Email ID: info@anonditahealthcare.com
+Address: Ansari Nagar, New Delhi,,
+MSME Registration Number: UDYAM-UP-28-0002264
+GSTIN: 07AEQPG6875H1ZY
+
+PRODUCT DETAILS:
+---------------
+Total Order Value: ₹29,946,400
+
+Products Found: 1
+
+Product 1:
+-----------
+Product Name: BIOCURE Disposable Surgical Rubber Gloves Natural rubber latex
+Brand: Registered Brand
+Brand Type: Registered Brand
+Catalogue Status: OEM verified catalogue 3,280,000
+Selling As: OEM
+Category Name & Quadrant: Disposable Surgical Rubber Gloves (Q2)
+Model: Biocure
+HSN Code: HSN not specified by seller

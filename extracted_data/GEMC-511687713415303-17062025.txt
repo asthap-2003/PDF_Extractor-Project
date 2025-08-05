@@ -1,0 +1,48 @@
+GEM CONTRACT DATA EXTRACTION REPORT
+===============================================
+File: GEMC-511687713415303-17062025.pdf
+Contract ID: cf96fd87-ddc5-4091-b988-7a49cb181c1b
+Extraction Date: 2025-08-05 15:14:55
+
+ORGANIZATION DETAILS:
+--------------------
+Type: Central Autonomous
+Ministry: Ministry of Health and Family Welfare
+Department: Department of Health and Family Welfare
+Organization Name: All India Institute of Medical Sciences
+Office Zone: Aiims, New Delhi 1st Floor , New Pvt. Ward, Store Section
+
+BUYER DETAILS:
+--------------
+Designation: Storekeeper Drugs
+Contact No: : 011-26593846-3846
+Email ID: vshravan@aiims.gov.in
+GSTIN: -
+Address: Ansari Nagar, New Delhi,,
+
+SELLER DETAILS:
+---------------
+GeM Seller ID: F026180000102512
+Company Name: RD ENTERPRISES
+Contact No: : 09871128239
+Email ID: rdenterprisesnew@gmail.com
+Address: Ansari Nagar, New Delhi,,
+MSME Registration Number: UDYAM-DL-05-0030418
+GSTIN: 07ARIPK8132E1ZV
+
+PRODUCT DETAILS:
+---------------
+Total Order Value: ₹8,325,000
+
+Products Found: 1
+
+Product 1:
+-----------
+Product Name: LMS PROTEZIONE Disposable Surgical rect
+Brand: Registered Brand sfgadt uz 9 oa
+Brand Type: Registered Brand sfgadt uz 9 oa
+Catalogue Status: OEM verified catalogue . a |
+Selling As: OEM verified Reseller GSTI
+Category Name & Quadrant: Disposable Surgical fied goers ox ager 1 [ITC on GST
+Model: PROTEZIONE POWDER FREE -
+HSN Code: HSN not specified by seller Cess2

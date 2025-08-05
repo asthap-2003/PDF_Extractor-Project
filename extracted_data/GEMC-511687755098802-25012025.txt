@@ -1,0 +1,70 @@
+GEM CONTRACT DATA EXTRACTION REPORT
+===============================================
+File: GEMC-511687755098802-25012025.pdf
+Contract ID: a8c94746-bd9e-4928-9fdf-817be5f45798
+Extraction Date: 2025-08-05 15:22:44
+
+ORGANIZATION DETAILS:
+--------------------
+Type: Central Government
+Ministry: Ministry of Health and Family Welfare
+Department: Department of Health and Family Welfare
+Organization Name: None
+Office Zone: Safdarjung Hospital
+
+BUYER DETAILS:
+--------------
+Designation: oic
+Contact No: : 011-26730512-0512
+Email ID: procuresurgical@vmmc-sjh.nic.in
+GSTIN: -
+Address: HOSPITAL NEW DELHI-110029,
+
+SELLER DETAILS:
+---------------
+GeM Seller ID: BDB7180000104721
+Company Name: PHARMA SURGE IMPEX
+Contact No: : 09811860172
+Email ID: info@pharmasurgeimpex.com
+Address: HOSPITAL NEW DELHI-110029,
+MSME Registration Number: -
+GSTIN: 07AADPG6722G1ZZ
+
+PRODUCT DETAILS:
+---------------
+Total Order Value: ₹11,592,000
+
+Products Found: 3
+
+Product 1:
+-----------
+Product Name: UNIPRO--BANSHI MEDICARE PRIVATE LIMITED Disposable Surgical
+Brand: Unregistered Brand
+Brand Type: Unregistered Brand
+Catalogue Status: OEM verified catalogue 420,000 NA 5,409,600
+Selling As: OEM verified Reseller
+Category Name & Quadrant: Disposable Surgical Rubber Gloves (Q2)
+Model: 611
+HSN Code: HSN not specified by seller
+
+Product 2:
+-----------
+Product Name: UNIPRO--BANSHI MEDICARE PRIVATE LIMITED Disposable Surgical
+Brand: Unregistered Brand
+Brand Type: Unregistered Brand
+Catalogue Status: OEM verified catalogue 300,000
+Selling As: OEM verified Reseller
+Category Name & Quadrant: Disposable Surgical Rubber Gloves (Q2)
+Model: 611
+HSN Code: HSN not specified by seller
+
+Product 3:
+-----------
+Product Name: UNIPRO--BANSHI MEDICARE PRIVATE LIMITED Disposable Surgical
+Brand: Unregistered Brand
+Brand Type: Unregistered Brand
+Catalogue Status: OEM verified catalogue 180,000
+Selling As: OEM verified Reseller
+Category Name & Quadrant: Disposable Surgical Rubber Gloves (Q2)
+Model: 611
+HSN Code: HSN not specified by seller

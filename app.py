@@ -369,15 +369,19 @@ def view_original_pdf(contract_id):
             return "Contract not found", 404
         
         filename = contract.get("filename")
+        # Check uploads folder first
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        # If not found, check uploaded_pdfs folder
+        if not os.path.exists(file_path):
+            file_path = os.path.join('uploaded_pdfs', filename)
+            if not os.path.exists(file_path):
+                cursor.close()
+                conn.close()
+                return "Original PDF file not found", 404
         
         # Close database connection
         cursor.close()
         conn.close()
-        
-        # Check if file exists
-        if not os.path.exists(file_path):
-            return "Original PDF file not found", 404
         
         # Return the original PDF file for viewing
         return send_file(
@@ -398,7 +402,7 @@ def contracts_list():
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor(dictionary=True)
         
-        # Get all contracts with their details
+        # Get all contracts with their details including product names
         cursor.execute("""
             SELECT 
                 c.contract_id,
@@ -421,15 +425,33 @@ def contracts_list():
                 b.contact_no as buyer_contact_no,
                 b.email_id,
                 b.gstin as buyer_gstin,
-                b.address as buyer_address
+                b.address as buyer_address,
+                GROUP_CONCAT(p.product_name SEPARATOR ', ') as product_names
             FROM contracts c
             LEFT JOIN organisations o ON c.contract_id = o.contract_id
             LEFT JOIN sellers s ON c.contract_id = s.contract_id
             LEFT JOIN buyers b ON c.contract_id = b.contract_id
-            ORDER BY c.upload_time DESC
+            LEFT JOIN products p ON c.contract_id = p.contract_id
+            GROUP BY c.contract_id, c.filename, c.upload_time, c.total_order_value,
+                     o.type, o.ministry, o.department, o.organisation_name, o.office_zone,
+                     s.gem_seller_id, s.company_name, s.contact_no, s.email_id, s.address,
+                     s.msme_registration_number, s.gstin, b.designation, b.contact_no,
+                     b.email_id, b.gstin, b.address
+            ORDER BY c.upload_time DESC, c.contract_id DESC
         """)
         
         contracts = cursor.fetchall()
+        
+        # Debug: Show order of records (most recent first)
+        if contracts:
+            print(f"Total records: {len(contracts)}")
+            print("Records ordered by upload time (newest first):")
+            for i, contract in enumerate(contracts[:3], 1):  # Show first 3 records
+                print(f"{i}. {contract['filename']} - {contract['upload_time']}")
+                if contract.get('product_names'):
+                    print(f"   Products: {contract['product_names']}")
+                else:
+                    print(f"   Products: None")
         
         # Close database connection
         cursor.close()
@@ -1073,6 +1095,9 @@ def contracts_list():
                             if (contract.email_id && contract.email_id.toLowerCase().includes(searchTerm)) return true;
                             if (contract.buyer_gstin && contract.buyer_gstin.toLowerCase().includes(searchTerm)) return true;
                             if (contract.buyer_address && contract.buyer_address.toLowerCase().includes(searchTerm)) return true;
+                            
+                            // Search in product names
+                            if (contract.product_names && contract.product_names.toLowerCase().includes(searchTerm)) return true;
                             
                             return false;
                         });
@@ -2923,44 +2948,67 @@ def extract_product_details_ocr(pdf_path):
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        file = request.files['pdf']
-        filename = secure_filename(file.filename)
+        files = request.files.getlist('pdf')
+        
+        if not files or all(file.filename == '' for file in files):
+            return "No files selected", 400
         
         # Create upload folder if it doesn't exist
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-        
-        # Save to temporary upload folder first
-        temp_file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(temp_file_path)
         
         # Define your permanent storage folder
         permanent_folder = "C:/Users/Yiion-35/OneDrive/Desktop/gem.gov.in/uploaded_pdfs"
         os.makedirs(permanent_folder, exist_ok=True)
         
-        # Copy file to your permanent folder
-        permanent_file_path = os.path.join(permanent_folder, filename)
-        import shutil
-        shutil.copy2(temp_file_path, permanent_file_path)
+        processed_files = []
+        failed_files = []
         
-        # Delete file from temporary upload folder
-        os.remove(temp_file_path)
+        # Process each file
+        for file in files:
+            if file.filename == '':
+                continue
+                
+            filename = secure_filename(file.filename)
+            
+            # Save to temporary upload folder first
+            temp_file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(temp_file_path)
+            
+            # Copy file to your permanent folder
+            permanent_file_path = os.path.join(permanent_folder, filename)
+            import shutil
+            shutil.copy2(temp_file_path, permanent_file_path)
+            
+            # Delete file from temporary upload folder
+            os.remove(temp_file_path)
+            
+            try:
+                # Generate unique contract ID
+                contract_id = str(uuid.uuid4())
+                
+                # Extract using pdfplumber (organisation, buyer, seller)
+                organisation_data, buyer_data, seller_data = extract_details_with_pdfplumber(permanent_file_path)
+                # Extract product details separately using OCR
+                products_list, total_order_value = extract_product_details_ocr(permanent_file_path)
+                
+                # Save to database
+                save_success = save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value)
+                
+                if save_success:
+                    processed_files.append(filename)
+                else:
+                    failed_files.append(filename)
+                    
+            except Exception as e:
+                print(f"Error processing {filename}: {e}")
+                failed_files.append(filename)
         
-        # Generate unique contract ID
-        contract_id = str(uuid.uuid4())
-        
-        # Extract using pdfplumber (organisation, buyer, seller)
-        organisation_data, buyer_data, seller_data = extract_details_with_pdfplumber(permanent_file_path)
-        # Extract product details separately using OCR
-        products_list, total_order_value = extract_product_details_ocr(permanent_file_path)
-        
-        # Save to database
-        save_success = save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value)
-        
-        # Redirect to contracts list page instead of showing individual result
-        if save_success:
+        # Redirect to contracts list page with success/failure info
+        if processed_files:
             return redirect('/contracts')
         else:
-            return "Error saving data to database", 500
+            return "Error processing all files", 500
+            
     # GET method: Present upload form
     return '''
     <!DOCTYPE html>
@@ -3132,9 +3180,60 @@ def index():
                 cursor: pointer;
             }
 
-            .submit-btn {
-                background: var(--primary-color);
+            .selected-files {
+                margin-top: 1rem;
+                max-height: 200px;
+                overflow-y: auto;
+                border: 1px solid var(--border-color);
+                border-radius: var(--radius-md);
+                background: var(--surface-color);
+                display: none;
+            }
+
+            .file-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0.75rem 1rem;
+                border-bottom: 1px solid var(--border-color);
+                background: var(--background-color);
+            }
+
+            .file-item:last-child {
+                border-bottom: none;
+            }
+
+            .file-name {
+                font-size: 0.875rem;
+                color: var(--text-primary);
+                font-weight: 500;
+                flex: 1;
+                margin-right: 1rem;
+            }
+
+            .remove-file {
+                background: var(--danger-color);
                 color: white;
+                border: none;
+                border-radius: 50%;
+                width: 24px;
+                height: 24px;
+                cursor: pointer;
+                font-size: 0.75rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s ease;
+            }
+
+            .remove-file:hover {
+                background: #b91c1c;
+                transform: scale(1.1);
+            }
+
+            .submit-btn {
+                background: #1e40af !important;
+                color: white !important;
                 padding: 1rem 2rem;
                 border: none;
                 border-radius: var(--radius-md);
@@ -3151,13 +3250,19 @@ def index():
             }
 
             .submit-btn:hover {
-                background: var(--primary-dark);
+                background: #1e3a8a !important;
                 transform: translateY(-1px);
                 box-shadow: var(--shadow-lg);
             }
 
             .submit-btn:active {
                 transform: translateY(0);
+            }
+
+            .submit-btn:disabled {
+                background: var(--text-muted);
+                cursor: not-allowed;
+                transform: none;
             }
 
             .view-contracts {
@@ -3288,6 +3393,16 @@ def index():
                 100% { transform: rotate(360deg); }
             }
 
+            .file-count {
+                background: var(--primary-color);
+                color: white;
+                padding: 0.25rem 0.75rem;
+                border-radius: var(--radius-sm);
+                font-size: 0.75rem;
+                font-weight: 600;
+                margin-left: 0.5rem;
+            }
+
             @media (max-width: 768px) {
                 body {
                     padding: 1rem;
@@ -3334,18 +3449,20 @@ def index():
                         <div class="upload-icon">
                             <i class="fas fa-cloud-upload-alt"></i>
                         </div>
-                        <div class="upload-text">Drop your PDF file here</div>
-                        <div class="upload-hint">or click to browse files</div>
-                        <input type="file" name="pdf" accept=".pdf" required class="file-input" id="fileInput">
+                        <div class="upload-text">Drop your PDF files here</div>
+                        <div class="upload-hint">or click to browse files (multiple files supported)</div>
+                        <input type="file" name="pdf" accept=".pdf" multiple required class="file-input" id="fileInput">
                     </div>
                     
-                    <button type="submit" class="submit-btn" id="submitBtn">
+                    <div class="selected-files" id="selectedFiles"></div>
+                    
+                    <button type="submit" class="submit-btn" id="submitBtn" disabled>
                         <i class="fas fa-upload"></i> Upload & Extract Data
                     </button>
                     
                     <div class="loading" id="loading">
                         <div class="spinner"></div>
-                        <p style="color: var(--text-secondary);">Processing your document...</p>
+                        <p style="color: var(--text-secondary);">Processing your documents...</p>
                     </div>
                 </form>
                 
@@ -3390,6 +3507,9 @@ def index():
             const uploadForm = document.getElementById('uploadForm');
             const submitBtn = document.getElementById('submitBtn');
             const loading = document.getElementById('loading');
+            const selectedFiles = document.getElementById('selectedFiles');
+            
+            let selectedFilesList = [];
             
             // Drag and drop functionality
             uploadArea.addEventListener('dragover', (e) => {
@@ -3404,29 +3524,92 @@ def index():
             uploadArea.addEventListener('drop', (e) => {
                 e.preventDefault();
                 uploadArea.classList.remove('dragover');
-                const files = e.dataTransfer.files;
-                if (files.length > 0) {
-                    fileInput.files = files;
-                    updateUploadText(files[0].name);
-                }
+                const files = Array.from(e.dataTransfer.files);
+                handleFiles(files);
             });
             
             // File input change
             fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    updateUploadText(e.target.files[0].name);
-                }
+                const files = Array.from(e.target.files);
+                handleFiles(files);
             });
             
-            function updateUploadText(filename) {
+            function handleFiles(files) {
+                // Filter only PDF files
+                const pdfFiles = files.filter(file => file.type === 'application/pdf');
+                
+                if (pdfFiles.length === 0) {
+                    alert('Please select only PDF files.');
+                    return;
+                }
+                
+                selectedFilesList = pdfFiles;
+                updateFileDisplay();
+                updateSubmitButton();
+            }
+            
+            function updateFileDisplay() {
+                if (selectedFilesList.length === 0) {
+                    selectedFiles.style.display = 'none';
+                    return;
+                }
+                
+                selectedFiles.style.display = 'block';
+                selectedFiles.innerHTML = '';
+                
+                selectedFilesList.forEach((file, index) => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item';
+                    fileItem.innerHTML = `
+                        <span class="file-name">${file.name}</span>
+                        <button type="button" class="remove-file" onclick="removeFile(${index})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    `;
+                    selectedFiles.appendChild(fileItem);
+                });
+                
+                // Update upload text
                 const uploadText = uploadArea.querySelector('.upload-text');
                 const uploadHint = uploadArea.querySelector('.upload-hint');
-                uploadText.textContent = filename;
-                uploadHint.textContent = 'Click to change file';
+                
+                if (selectedFilesList.length === 1) {
+                    uploadText.textContent = selectedFilesList[0].name;
+                    uploadHint.textContent = 'Click to change files';
+                } else {
+                    uploadText.textContent = `${selectedFilesList.length} files selected`;
+                    uploadHint.textContent = 'Click to change files';
+                }
+            }
+            
+            function removeFile(index) {
+                selectedFilesList.splice(index, 1);
+                updateFileDisplay();
+                updateSubmitButton();
+                
+                // Update file input
+                const dt = new DataTransfer();
+                selectedFilesList.forEach(file => dt.items.add(file));
+                fileInput.files = dt.files;
+            }
+            
+            function updateSubmitButton() {
+                if (selectedFilesList.length > 0) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = `<i class="fas fa-upload"></i> Upload & Extract Data (${selectedFilesList.length} files)`;
+                } else {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = `<i class="fas fa-upload"></i> Upload & Extract Data`;
+                }
             }
             
             // Form submission
             uploadForm.addEventListener('submit', () => {
+                if (selectedFilesList.length === 0) {
+                    alert('Please select at least one PDF file.');
+                    return;
+                }
+                
                 submitBtn.style.display = 'none';
                 loading.style.display = 'block';
             });
