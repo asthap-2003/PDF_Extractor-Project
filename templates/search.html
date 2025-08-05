@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Contracts - GEM Contract Parser</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .nav-links {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .nav-links a {
+            display: inline-block;
+            margin: 0 10px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .nav-links a:hover {
+            background-color: #0056b3;
+        }
+        .search-form {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .search-form input[type="text"] {
+            padding: 12px;
+            width: 400px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .search-form button {
+            padding: 12px 24px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        .search-form button:hover {
+            background-color: #218838;
+        }
+        .search-results {
+            margin-top: 20px;
+        }
+        .results-count {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .contract-link {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .contract-link:hover {
+            text-decoration: underline;
+        }
+        .no-results {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 40px;
+        }
+        .highlight {
+            background-color: #fff3cd;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Search Contracts</h1>
+        
+        <div class="nav-links">
+            <a href="/">Upload New PDF</a>
+            <a href="/contracts">View All Contracts</a>
+        </div>
+        
+        <div class="search-form">
+            <form method="GET" action="/search">
+                <input type="text" name="q" placeholder="Search by organisation, seller, product, or filename..." 
+                       value="{{ query }}" required>
+                <button type="submit">Search</button>
+            </form>
+        </div>
+        
+        {% if query %}
+            <div class="search-results">
+                {% if contracts %}
+                    <div class="results-count">
+                        Found {{ contracts|length }} contract(s) matching "{{ query }}"
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Filename</th>
+                                <th>Organisation</th>
+                                <th>Seller Company</th>
+                                <th>Product</th>
+                                <th>Upload Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for contract in contracts %}
+                            <tr>
+                                <td>{{ contract[0] }}</td>
+                                <td>{{ contract[1] }}</td>
+                                <td>{{ contract[3] or 'N/A' }}</td>
+                                <td>{{ contract[11] or 'N/A' }}</td>
+                                <td>{{ contract[15] or 'N/A' }}</td>
+                                <td>{{ contract[2] }}</td>
+                                <td>
+                                    <a href="/contract/{{ contract[0] }}" class="contract-link">View Details</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <div class="no-results">
+                        <p>No contracts found matching "{{ query }}"</p>
+                        <p>Try searching with different keywords or <a href="/contracts">view all contracts</a></p>
+                    </div>
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="no-results">
+                <p>Enter a search term above to find contracts</p>
+                <p>You can search by:</p>
+                <ul style="text-align: left; max-width: 400px; margin: 0 auto;">
+                    <li>Organisation name</li>
+                    <li>Seller company name</li>
+                    <li>Product name</li>
+                    <li>Filename</li>
+                </ul>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html> 
