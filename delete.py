@@ -22,7 +22,7 @@ db_config = {
     'database': 'contract_data'
 }
 
-def save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value):
+def save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, text_format):
     """Save extracted data to MySQL database"""
     conn = None  # Initialize conn to None
     cursor = None  # Initialize cursor to None
@@ -32,9 +32,9 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
         
         # Insert into contracts table
         cursor.execute("""
-        INSERT INTO contracts (contract_id, filename, upload_time, total_order_value)
-        VALUES (%s, %s, %s, %s)
-        """, (contract_id, filename, datetime.now(), total_order_value))
+        INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format)
+        VALUES (%s, %s, %s, %s, %s)
+        """, (contract_id, filename, datetime.now(), total_order_value, text_format))
         
         # Insert into organisations table
         cursor.execute("""
@@ -199,6 +199,40 @@ def extract_text_from_pdf_ocr(pdf_path):
         full_text += text + "\n"
     return full_text
 
+def extract_complete_pdf_text(pdf_path):
+    """Extract complete text from PDF using both pdfplumber and OCR for maximum coverage"""
+    complete_text = ""
+    
+    # First try pdfplumber for text extraction - get ALL text from ALL pages
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            print(f"  Extracting text from {len(pdf.pages)} pages using pdfplumber...")
+            for page_num, page in enumerate(pdf.pages, 1):
+                text = page.extract_text()
+                if text:
+                    complete_text += f"\n--- Page {page_num} ---\n"
+                    complete_text += text + "\n"
+                    print(f"    Page {page_num}: {len(text)} characters extracted")
+    except Exception as e:
+        print(f"Error extracting text with pdfplumber: {e}")
+    
+    # Always use OCR to get complete PDF text, regardless of pdfplumber result
+    try:
+        print(f"  Extracting text using OCR...")
+        ocr_text = extract_text_from_pdf_ocr(pdf_path)
+        # Combine both results for maximum coverage
+        complete_text += "\n" + ocr_text
+    except Exception as e:
+        print(f"Error extracting text with OCR: {e}")
+        complete_text += f"\n[OCR Error: {e}]"
+    
+    # Ensure we always return some text
+    if not complete_text.strip():
+        complete_text = f"[No text extracted from {os.path.basename(pdf_path)}]"
+    
+    print(f"  Total extracted text length: {len(complete_text)} characters")
+    return complete_text.strip()
+
 def get_value(lines, key):
     for line in lines:
         if key.lower() in line.lower():
@@ -309,8 +343,11 @@ def process_unprocessed_pdfs():
             # Extract product details separately using OCR - EXACT SAME LOGIC
             products_list, total_order_value = extract_product_details_ocr(file_path)
             
+            # Extract complete PDF text for text_format column
+            complete_text = extract_complete_pdf_text(file_path)
+            
             # Save to database - EXACT SAME LOGIC
-            save_success = save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value)
+            save_success = save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, complete_text)
             
             if save_success:
                 processed_files.append(filename)

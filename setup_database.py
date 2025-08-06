@@ -44,7 +44,8 @@ def create_tables():
             contract_id VARCHAR(36) PRIMARY KEY,
             filename VARCHAR(255) NOT NULL,
             upload_time DATETIME NOT NULL,
-            total_order_value VARCHAR(255)
+            total_order_value VARCHAR(255),
+            text_format LONGTEXT
         )
         """)
         print("Table 'contracts' created successfully or already exists")
@@ -117,6 +118,19 @@ def create_tables():
         conn.commit()
         print("\nAll tables created successfully!")
         
+        # Add text_format column to existing contracts table if it doesn't exist
+        try:
+            cursor.execute("""
+            ALTER TABLE contracts 
+            ADD COLUMN text_format LONGTEXT
+            """)
+            print("Added text_format column to contracts table")
+        except Error as e:
+            # Column might already exist, which is fine
+            print("text_format column already exists or couldn't be added")
+        
+        conn.commit()
+        
     except Error as e:
         print(f"Error creating tables: {e}")
     finally:
@@ -158,7 +172,10 @@ def main():
     print("=" * 50)
     
     # Step 1: Create the database
-
+    create_database()
+    
+    # Step 2: Create tables
+    create_tables()
     
     # Step 3: Verify tables were created
     verify_tables()

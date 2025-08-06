@@ -402,13 +402,15 @@ def contracts_list():
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor(dictionary=True)
         
-        # Get all contracts with their details including product names
+        # Get all contracts with their details including product names and text_format
+        # Using a simpler query to avoid sort memory issues
         cursor.execute("""
             SELECT 
                 c.contract_id,
                 c.filename,
                 c.upload_time,
                 c.total_order_value,
+                c.text_format,
                 o.type,
                 o.ministry,
                 o.department,
@@ -425,22 +427,25 @@ def contracts_list():
                 b.contact_no as buyer_contact_no,
                 b.email_id,
                 b.gstin as buyer_gstin,
-                b.address as buyer_address,
-                GROUP_CONCAT(p.product_name SEPARATOR ', ') as product_names
+                b.address as buyer_address
             FROM contracts c
             LEFT JOIN organisations o ON c.contract_id = o.contract_id
             LEFT JOIN sellers s ON c.contract_id = s.contract_id
             LEFT JOIN buyers b ON c.contract_id = b.contract_id
-            LEFT JOIN products p ON c.contract_id = p.contract_id
-            GROUP BY c.contract_id, c.filename, c.upload_time, c.total_order_value,
-                     o.type, o.ministry, o.department, o.organisation_name, o.office_zone,
-                     s.gem_seller_id, s.company_name, s.contact_no, s.email_id, s.address,
-                     s.msme_registration_number, s.gstin, b.designation, b.contact_no,
-                     b.email_id, b.gstin, b.address
             ORDER BY c.upload_time DESC, c.contract_id DESC
         """)
         
         contracts = cursor.fetchall()
+        
+        # Now get product names separately to avoid GROUP BY issues
+        for contract in contracts:
+            cursor.execute("""
+                SELECT GROUP_CONCAT(product_name SEPARATOR ', ') as product_names
+                FROM products 
+                WHERE contract_id = %s
+            """, (contract['contract_id'],))
+            product_result = cursor.fetchone()
+            contract['product_names'] = product_result['product_names'] if product_result else None
         
         # Debug: Show order of records (most recent first)
         if contracts:
@@ -906,6 +911,7 @@ def contracts_list():
                     <table>
                         <thead>
                             <tr>
+                                <th>ID</th>
                                 <th>Organization Details</th>
                                 <th>Seller Details</th>
                                 <th>Buyer Details</th>
@@ -920,6 +926,9 @@ def contracts_list():
             for i, contract in enumerate(contracts, 1):
                 html += f'''
                         <tr>
+                            <td style="text-align: center; font-weight: bold;">
+                                <div style="font-size: 1.1em; color: #495057;">{i}</div>
+                            </td>
                             <td>
                                 <div class="data-section">
                                     <div class="section-title">
@@ -1099,6 +1108,9 @@ def contracts_list():
                             // Search in product names
                             if (contract.product_names && contract.product_names.toLowerCase().includes(searchTerm)) return true;
                             
+                            // Search in text_format (complete PDF text)
+                            if (contract.text_format && contract.text_format.toLowerCase().includes(searchTerm)) return true;
+                            
                             return false;
                         });
                         
@@ -1110,7 +1122,7 @@ def contracts_list():
                     if (contracts.length === 0) {
                         tableBody.innerHTML = `
                             <tr>
-                                <td colspan="5">
+                                <td colspan="6">
                                     <div class="empty-state">
                                         <i class="fas fa-search"></i>
                                         <h3>No contracts found</h3>
@@ -1124,8 +1136,11 @@ def contracts_list():
                     let html = '';
                     contracts.forEach((contract, index) => {
                         html += `
-                                                                                            <tr>
-                                    <td>
+                            <tr>
+                                <td style="text-align: center; font-weight: bold;">
+                                    <div style="font-size: 1.1em; color: #495057;">${index + 1}</div>
+                                </td>
+                                <td>
                                         <div class="data-section">
                                             <div class="section-title">
                                                 <i class="fas fa-building"></i> Organization
@@ -2701,7 +2716,7 @@ def get_products(contract_id):
             "error": str(e)
         }), 500
 
-def save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value):
+def save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, text_format):
     """Save extracted data to MySQL database"""
     conn = None  # Initialize conn to None
     cursor = None  # Initialize cursor to None
@@ -2711,9 +2726,9 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
         
         # Insert into contracts table
         cursor.execute("""
-        INSERT INTO contracts (contract_id, filename, upload_time, total_order_value)
-        VALUES (%s, %s, %s, %s)
-        """, (contract_id, filename, datetime.now(), total_order_value))
+        INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format)
+        VALUES (%s, %s, %s, %s, %s)
+        """, (contract_id, filename, datetime.now(), total_order_value, text_format))
         
         # Insert into organisations table
         cursor.execute("""
@@ -2878,6 +2893,40 @@ def extract_text_from_pdf_ocr(pdf_path):
         full_text += text + "\n"
     return full_text
 
+def extract_complete_pdf_text(pdf_path):
+    """Extract complete text from PDF using both pdfplumber and OCR for maximum coverage"""
+    complete_text = ""
+    
+    # First try pdfplumber for text extraction - get ALL text from ALL pages
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            print(f"  Extracting text from {len(pdf.pages)} pages using pdfplumber...")
+            for page_num, page in enumerate(pdf.pages, 1):
+                text = page.extract_text()
+                if text:
+                    complete_text += f"\n--- Page {page_num} ---\n"
+                    complete_text += text + "\n"
+                    print(f"    Page {page_num}: {len(text)} characters extracted")
+    except Exception as e:
+        print(f"Error extracting text with pdfplumber: {e}")
+    
+    # Always use OCR to get complete PDF text, regardless of pdfplumber result
+    try:
+        print(f"  Extracting text using OCR...")
+        ocr_text = extract_text_from_pdf_ocr(pdf_path)
+        # Combine both results for maximum coverage
+        complete_text += "\n" + ocr_text
+    except Exception as e:
+        print(f"Error extracting text with OCR: {e}")
+        complete_text += f"\n[OCR Error: {e}]"
+    
+    # Ensure we always return some text
+    if not complete_text.strip():
+        complete_text = f"[No text extracted from {os.path.basename(pdf_path)}]"
+    
+    print(f"  Total extracted text length: {len(complete_text)} characters")
+    return complete_text.strip()
+
 def get_value(lines, key):
     for line in lines:
         if key.lower() in line.lower():
@@ -2991,8 +3040,11 @@ def index():
                 # Extract product details separately using OCR
                 products_list, total_order_value = extract_product_details_ocr(permanent_file_path)
                 
+                # Extract complete PDF text for text_format column
+                complete_text = extract_complete_pdf_text(permanent_file_path)
+                
                 # Save to database
-                save_success = save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value)
+                save_success = save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, complete_text)
                 
                 if save_success:
                     processed_files.append(filename)
