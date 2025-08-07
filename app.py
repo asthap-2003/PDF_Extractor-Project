@@ -454,8 +454,8 @@ class Paginator:
 
 def generate_pagination_html(current_page, total_pages, base_url="?", per_page=5, total_records=0, available_sizes=[5, 10, 50, 100]):
     """Generate pagination HTML controls with attractive design and page size selector"""
-    if total_pages <= 1:
-        return ""
+    # Always show the pagination bar, even if only one page
+    # (User wants to see the bar for navigation/page size change)
     
     # Calculate record range
     start_record = (current_page - 1) * per_page + 1
