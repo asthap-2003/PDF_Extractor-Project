@@ -478,73 +478,82 @@ def generate_pagination_html(current_page, total_pages, base_url="?", per_page=5
     
     # First button
     if current_page > 1:
-        html += f'<a href="{base_url}page=1" class="pagination-btn" title="First Page"><i class="fas fa-angle-double-left"></i></a>'
+        html += f'<a href="{base_url}page=1&per_page={per_page}" class="pagination-btn" title="First Page"><i class="fas fa-angle-double-left"></i></a>'
     else:
         html += '<span class="pagination-btn disabled" title="First Page"><i class="fas fa-angle-double-left"></i></span>'
-    
+
     # Previous button
     if current_page > 1:
-        html += f'<a href="{base_url}page={current_page - 1}" class="pagination-btn" title="Previous Page"><i class="fas fa-chevron-left"></i></a>'
+        html += f'<a href="{base_url}page={current_page - 1}&per_page={per_page}" class="pagination-btn" title="Previous Page"><i class="fas fa-chevron-left"></i></a>'
     else:
         html += '<span class="pagination-btn disabled" title="Previous Page"><i class="fas fa-chevron-left"></i></span>'
-    
+
     # Page numbers (show max 5 pages)
     start_page = max(1, current_page - 2)
     end_page = min(total_pages, current_page + 2)
-    
+
     # Show first page if not in range
     if start_page > 1:
-        html += f'<a href="{base_url}page=1" class="pagination-btn">1</a>'
+        html += f'<a href="{base_url}page=1&per_page={per_page}" class="pagination-btn">1</a>'
         if start_page > 2:
             html += '<span class="pagination-ellipsis">...</span>'
-    
+
     # Show page numbers
     for page_num in range(start_page, end_page + 1):
         if page_num == current_page:
             html += f'<span class="pagination-btn active">{page_num}</span>'
         else:
-            html += f'<a href="{base_url}page={page_num}" class="pagination-btn">{page_num}</a>'
-    
+            html += f'<a href="{base_url}page={page_num}&per_page={per_page}" class="pagination-btn">{page_num}</a>'
+
     # Show last page if not in range
     if end_page < total_pages:
         if end_page < total_pages - 1:
             html += '<span class="pagination-ellipsis">...</span>'
-        html += f'<a href="{base_url}page={total_pages}" class="pagination-btn">{total_pages}</a>'
-    
+        html += f'<a href="{base_url}page={total_pages}&per_page={per_page}" class="pagination-btn">{total_pages}</a>'
+
     # Next button
     if current_page < total_pages:
-        html += f'<a href="{base_url}page={current_page + 1}" class="pagination-btn" title="Next Page"><i class="fas fa-chevron-right"></i></a>'
+        html += f'<a href="{base_url}page={current_page + 1}&per_page={per_page}" class="pagination-btn" title="Next Page"><i class="fas fa-chevron-right"></i></a>'
     else:
         html += '<span class="pagination-btn disabled" title="Next Page"><i class="fas fa-chevron-right"></i></span>'
-    
+
     # Last button
     if current_page < total_pages:
-        html += f'<a href="{base_url}page={total_pages}" class="pagination-btn" title="Last Page"><i class="fas fa-angle-double-right"></i></a>'
+        html += f'<a href="{base_url}page={total_pages}&per_page={per_page}" class="pagination-btn" title="Last Page"><i class="fas fa-angle-double-right"></i></a>'
     else:
         html += '<span class="pagination-btn disabled" title="Last Page"><i class="fas fa-angle-double-right"></i></span>'
-    
+
     html += '</div>'
-    
-    # Add page size selector
+
+    # Add page size selector with JS to preserve page and per_page
     html += f'''
     <div class="pagination-options">
         <div class="page-size-selector">
             <label for="pageSize">Show:</label>
             <select id="pageSize" onchange="changePageSize(this.value)">
     '''
-    
+
     for size in available_sizes:
         selected = "selected" if size == per_page else ""
         html += f'<option value="{size}" {selected}>{size}</option>'
-    
+
     html += '''
             </select>
             <span>per page</span>
         </div>
     </div>
+    <script>
+    function changePageSize(size) {
+        // Always go to page 1 when changing page size
+        const params = new URLSearchParams(window.location.search);
+        params.set('per_page', size);
+        params.set('page', 1);
+        window.location.search = params.toString();
+    }
+    </script>
     </div>
     '''
-    
+
     return html
 
 @app.route('/contracts')
@@ -1606,10 +1615,11 @@ def contracts_list():
         
         if contracts:
             for i, contract in enumerate(contracts, 1):
+                serial_number = (page - 1) * per_page + i
                 html += f'''
                         <tr>
                             <td style="text-align: center; font-weight: bold;">
-                                <div style="font-size: 1.1em; color: #495057;">{i}</div>
+                                <div style="font-size: 1.1em; color: #495057;">{serial_number}</div>
                             </td>
                             <td>
                                 <div class="data-section">
