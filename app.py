@@ -3784,30 +3784,20 @@ def index():
                     }
                     .result-list {
                         width: 90vw;
-                        max-width: 1200px;
+                        max-width: 900px;
                         margin: 64px auto;
-                        background: rgba(255,255,255,0.97);
-                        border-radius: 22px;
-                        box-shadow: 0 12px 40px #1e40af22, 0 2px 12px #fbbf2433;
-                        padding: 54px 60px 40px 60px;
-                        backdrop-filter: blur(12px) saturate(1.3);
-                        border: 2.5px solid #1e40af33;
+                        background: #fff;
+                        border-radius: 10px;
+                        box-shadow: none;
+                        padding: 44px 40px 32px 40px;
+                        border: 1.5px solid #e2e8f0;
                         position: relative;
                         overflow: visible;
                         z-index: 1;
-                        animation: floatCard 1.2s cubic-bezier(.68,-0.55,.27,1.55);
+                        animation: none;
                     }
                     .result-list::before {
-                        content: '';
-                        position: absolute;
-                        inset: -3px;
-                        z-index: -1;
-                        border-radius: 24px;
-                        background: linear-gradient(120deg, #1e40af 0%, #fbbf24 100%);
-                        opacity: 0.18;
-                        filter: blur(8px);
-                        pointer-events: none;
-                        animation: borderGlow 2.5s infinite alternate;
+                        display: none;
                     }
                     @keyframes floatCard {
                         0% { transform: translateY(40px) scale(0.95); opacity: 0; }
@@ -3879,28 +3869,31 @@ def index():
                         gap: 18px;
                     }
                     .duplicate-card {
-                        display: inline-flex;
-                        align-items: center;
-                        gap: 14px;
-                        background: linear-gradient(90deg, #1e40af 0%, #fbbf24 100%);
-                        color: #fff;
-                        border-radius: 16px;
-                        padding: 10px 36px 10px 20px;
+                        background: #fff;
+                        color: #1e40af;
+                        border-radius: 6px;
+                        padding: 0 18px 0 12px;
                         width: 320px;
                         min-width: 320px;
                         max-width: 320px;
-                        font-size: 1.18em;
-                        font-weight: 900;
+                        height: 44px;
+                        display: flex;
+                        align-items: center;
+                        font-size: 1.08em;
+                        font-weight: 600;
                         margin-left: 0;
-                        box-shadow: 0 6px 24px #1e40af22;
+                        box-shadow: none;
                         position: relative;
-                        transition: box-shadow 0.2s, transform 0.18s;
-                        animation: popIn 0.7s cubic-bezier(.68,-0.55,.27,1.55);
-                        border: 2.5px solid #1e40af;
-                        backdrop-filter: blur(4px) saturate(1.1);
-                        overflow: hidden;
-                        letter-spacing: 0.5px;
+                        transition: background 0.18s;
+                        border: 1.2px solid #e2e8f0;
+                        letter-spacing: 0.1px;
                         justify-content: flex-end;
+                        gap: 10px;
+                    }
+                    .duplicate-card:hover {
+                        background: #f1f5f9;
+                        box-shadow: none;
+                    }
                     }
                     }
                     .duplicate-card::before {
@@ -3926,38 +3919,39 @@ def index():
                     }
                     .duplicate-card .fa-circle-exclamation {
                         margin-right: 8px;
-                        font-size: 1.35em;
+                        font-size: 1.15em;
                         opacity: 0.97;
-                        color: #fbbf24;
-                        filter: drop-shadow(0 1px 2px #1e40af33);
+                        color: #1e40af;
+                        background: #f1f5f9;
+                        border-radius: 50%;
+                        padding: 4px;
                         z-index: 2;
                     }
                     .duplicate-card .close-btn {
-                        margin-left: 14px;
+                        margin-left: 10px;
                         background: none;
                         border: none;
                         color: #1e40af;
-                        font-size: 1.22em;
+                        font-size: 1.08em;
                         cursor: pointer;
-                        transition: color 0.2s, transform 0.2s;
+                        transition: color 0.2s, background 0.2s;
                         border-radius: 50%;
-                        width: 30px;
-                        height: 30px;
+                        width: 28px;
+                        height: 28px;
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         padding: 0;
-                        box-shadow: 0 2px 8px #fff2;
+                        box-shadow: none;
                         z-index: 2;
                     }
                     .duplicate-card .close-btn:hover {
-                        color: #fbbf24;
-                        background: #1e40af22;
-                        transform: scale(1.22) rotate(12deg);
-                        animation: bounceClose 0.4s;
+                        color: #fff;
+                        background: #1e40af;
+                        animation: none;
                     }
                     .duplicate-card .close-btn:focus {
-                        outline: 2px solid #fbbf24;
+                        outline: 2px solid #1e40af;
                     }
                     @keyframes bounceClose {
                         0% { transform: scale(1.22) rotate(12deg); }
@@ -3968,7 +3962,7 @@ def index():
             </head>
             <body>
                 <div class="result-list">
-                    <h2><i class="fa-solid fa-trophy"></i> Upload Results</h2>
+                    <h2 style="color:#1e40af;font-weight:900;">Upload Results</h2>
                     <ul>
             '''
             for fname in processed_files:
@@ -3976,11 +3970,11 @@ def index():
             for fname in duplicate_files:
                     result_html += (
                         f'<li style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:18px;">'
-                        f'<span style="font-weight:600;color:#1e40af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100% - 320px);">{fname}</span>'
+                        f'<span style="font-weight:600;color:#1e40af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100% - 340px);">{fname}</span>'
                         f'<span class="duplicate-card">'
                         f'<i class="fa-solid fa-circle-exclamation"></i>'
-                        f'Already Extracted'
-                        f'<button class="close-btn" title="Remove" onclick="this.closest(\'li\').remove()">'
+                        f'<span style="margin-right:12px;">Already Extracted</span>'
+                        f'<button class="close-btn" title="Remove" onclick="this.closest(\'li\').remove()" style="margin-left:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:none;">'
                         f'<i class="fa-solid fa-xmark"></i>'
                         f'</button>'
                         f'</span></li>'
@@ -4438,11 +4432,10 @@ def index():
                     <div class="file-upload-area" id="uploadArea">
                      <input type="file" name="pdf" accept=".pdf" multiple required class="file-input" id="fileInput">
                         <div class="upload-icon">
-                            <i class="fas fa-cloud-upload-alt"></i>
+                            <i class="fas fa-cloud-upload-alt" style="color:#1e40af;"></i>
                         </div>
                         <div class="upload-text">Drop your PDF files here</div>
                         <div class="upload-hint">or click to browse files (multiple files supported)</div>
-                       
                     </div>
                     
                     <div class="selected-files" id="selectedFiles"></div>
@@ -4499,55 +4492,62 @@ def index():
             const submitBtn = document.getElementById('submitBtn');
             const loading = document.getElementById('loading');
             const selectedFiles = document.getElementById('selectedFiles');
-            
+
             let selectedFilesList = [];
-            
+            let fileDialogOpen = false;
+
             // Drag and drop functionality
             uploadArea.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 uploadArea.classList.add('dragover');
             });
-            
+
             uploadArea.addEventListener('dragleave', () => {
                 uploadArea.classList.remove('dragover');
             });
-            
+
             uploadArea.addEventListener('drop', (e) => {
                 e.preventDefault();
                 uploadArea.classList.remove('dragover');
                 const files = Array.from(e.dataTransfer.files);
                 handleFiles(files);
             });
-            
+
             // File input change
             fileInput.addEventListener('change', (e) => {
+                fileDialogOpen = false;
                 const files = Array.from(e.target.files);
                 handleFiles(files);
             });
-            
+
             function handleFiles(files) {
                 // Filter only PDF files
                 const pdfFiles = files.filter(file => file.type === 'application/pdf');
-                
                 if (pdfFiles.length === 0) {
                     alert('Please select only PDF files.');
                     return;
                 }
-                
                 selectedFilesList = pdfFiles;
                 updateFileDisplay();
                 updateSubmitButton();
+                // Update file input for form submit
+                const dt = new DataTransfer();
+                selectedFilesList.forEach(file => dt.items.add(file));
+                fileInput.files = dt.files;
             }
-            
+
             function updateFileDisplay() {
                 if (selectedFilesList.length === 0) {
                     selectedFiles.style.display = 'none';
+                    // Reset upload text/hint
+                    const uploadText = uploadArea.querySelector('.upload-text');
+                    const uploadHint = uploadArea.querySelector('.upload-hint');
+                    uploadText.textContent = 'Drop your PDF files here';
+                    uploadHint.textContent = 'or click to browse files (multiple files supported)';
                     return;
                 }
-                
                 selectedFiles.style.display = 'block';
                 selectedFiles.innerHTML = '';
-                
                 selectedFilesList.forEach((file, index) => {
                     const fileItem = document.createElement('div');
                     fileItem.className = 'file-item';
@@ -4559,11 +4559,9 @@ def index():
                     `;
                     selectedFiles.appendChild(fileItem);
                 });
-                
                 // Update upload text
                 const uploadText = uploadArea.querySelector('.upload-text');
                 const uploadHint = uploadArea.querySelector('.upload-hint');
-                
                 if (selectedFilesList.length === 1) {
                     uploadText.textContent = selectedFilesList[0].name;
                     uploadHint.textContent = 'Click to change files';
@@ -4572,18 +4570,17 @@ def index():
                     uploadHint.textContent = 'Click to change files';
                 }
             }
-            
-            function removeFile(index) {
+
+            window.removeFile = function(index) {
                 selectedFilesList.splice(index, 1);
                 updateFileDisplay();
                 updateSubmitButton();
-                
-                // Update file input
+                // Update file input for form submit
                 const dt = new DataTransfer();
                 selectedFilesList.forEach(file => dt.items.add(file));
                 fileInput.files = dt.files;
             }
-            
+
             function updateSubmitButton() {
                 if (selectedFilesList.length > 0) {
                     submitBtn.disabled = false;
@@ -4593,21 +4590,23 @@ def index():
                     submitBtn.innerHTML = `<i class="fas fa-upload"></i> Upload & Extract Data`;
                 }
             }
-            
+
             // Form submission
             uploadForm.addEventListener('submit', () => {
                 if (selectedFilesList.length === 0) {
                     alert('Please select at least one PDF file.');
                     return;
                 }
-                
                 submitBtn.style.display = 'none';
                 loading.style.display = 'block';
             });
-            
-            // Click to upload
-            uploadArea.addEventListener('click', () => {
-                fileInput.click();
+
+            // Click to upload (prevent multiple dialogs)
+            uploadArea.addEventListener('click', (e) => {
+                if (!fileDialogOpen) {
+                    fileDialogOpen = true;
+                    fileInput.click();
+                }
             });
         </script>
     </body>
