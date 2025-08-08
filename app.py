@@ -3710,8 +3710,12 @@ def index():
 
         processed_files = []
         failed_files = []
+        duplicate_files = []
 
-        # Process each file
+        # Connect to database once for all checks
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True, buffered=True)
+
         for file in files:
             if file.filename == '':
                 continue
@@ -3719,6 +3723,17 @@ def index():
             filename = secure_filename(file.filename)
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
+
+            # Check if this file has already been extracted (exists in contracts table)
+            cursor.execute("SELECT contract_id FROM contracts WHERE filename = %s", (filename,))
+            result = cursor.fetchone()
+            # Always fetch result before next execute to avoid 'Unread result found' error
+            if result:
+                duplicate_files.append(filename)
+                # Optionally, remove the just-uploaded file to avoid clutter
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                continue
 
             try:
                 # Generate unique contract ID
@@ -3744,9 +3759,242 @@ def index():
                 print(f"Error processing {filename}: {e}")
                 failed_files.append(filename)
 
-        # Redirect to contracts list page with success/failure info
-        if processed_files:
-            return redirect('/contracts')
+        cursor.close()
+        conn.close()
+
+        # Show upload result with red error for duplicates
+        if processed_files or duplicate_files or failed_files:
+            # Build HTML result
+            result_html = '''
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Upload Result</title>
+                <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+                <style>
+                    body {
+                        font-family: 'Inter', Arial, sans-serif;
+                        background: #f8fafc;
+                        color: #1e293b;
+                        min-height: 100vh;
+                        background-image: url('https://www.transparenttextures.com/patterns/cubes.png'), linear-gradient(120deg, #fbbf24 0%, #1e40af 100%);
+                        background-blend-mode: lighten;
+                    }
+                    .result-list {
+                        width: 90vw;
+                        max-width: 1200px;
+                        margin: 64px auto;
+                        background: rgba(255,255,255,0.97);
+                        border-radius: 22px;
+                        box-shadow: 0 12px 40px #1e40af22, 0 2px 12px #fbbf2433;
+                        padding: 54px 60px 40px 60px;
+                        backdrop-filter: blur(12px) saturate(1.3);
+                        border: 2.5px solid #1e40af33;
+                        position: relative;
+                        overflow: visible;
+                        z-index: 1;
+                        animation: floatCard 1.2s cubic-bezier(.68,-0.55,.27,1.55);
+                    }
+                    .result-list::before {
+                        content: '';
+                        position: absolute;
+                        inset: -3px;
+                        z-index: -1;
+                        border-radius: 24px;
+                        background: linear-gradient(120deg, #1e40af 0%, #fbbf24 100%);
+                        opacity: 0.18;
+                        filter: blur(8px);
+                        pointer-events: none;
+                        animation: borderGlow 2.5s infinite alternate;
+                    }
+                    @keyframes floatCard {
+                        0% { transform: translateY(40px) scale(0.95); opacity: 0; }
+                        80% { transform: translateY(-8px) scale(1.03); opacity: 1; }
+                        100% { transform: translateY(0) scale(1); }
+                    }
+                    @keyframes borderGlow {
+                        0% { opacity: 0.18; filter: blur(8px); }
+                        100% { opacity: 0.32; filter: blur(16px); }
+                    }
+                    .result-list h2 {
+                        margin-bottom: 30px;
+                        color: #1e40af;
+                        font-size: 2.3rem;
+                        font-weight: 900;
+                        letter-spacing: 0.5px;
+                        text-shadow: 0 2px 12px #fbbf2433, 0 1px 0 #fff;
+                        display: flex;
+                        align-items: center;
+                        gap: 14px;
+                    }
+                    .result-list h2 .fa-trophy {
+                        color: #fbbf24;
+                        text-shadow: 0 2px 8px #1e40af44;
+                        font-size: 1.3em;
+                        animation: trophySpin 2.5s infinite linear;
+                    }
+                    @keyframes trophySpin {
+                        0% { transform: rotate(-10deg); }
+                        50% { transform: rotate(10deg); }
+                        100% { transform: rotate(-10deg); }
+                    }
+                    .success {
+                        color: #1e40af;
+                        font-weight: 700;
+                        font-size: 1.13em;
+                        position: relative;
+                        z-index: 2;
+                    }
+                    .success::after {
+                        content: '';
+                        display: inline-block;
+                        width: 18px;
+                        height: 18px;
+                        background: url('https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f389.png') no-repeat center/contain;
+                        margin-left: 7px;
+                        vertical-align: middle;
+                        animation: confettiPop 1.2s cubic-bezier(.68,-0.55,.27,1.55);
+                    }
+                    @keyframes confettiPop {
+                        0% { transform: scale(0.2) translateY(10px); opacity: 0; }
+                        80% { transform: scale(1.2) translateY(-4px); opacity: 1; }
+                        100% { transform: scale(1) translateY(0); }
+                    }
+                    .fail {
+                        color: #f43f5e;
+                        font-weight: 700;
+                        font-size: 1.13em;
+                        position: relative;
+                        z-index: 2;
+                    }
+                    ul {
+                        padding-left: 0;
+                        margin-bottom: 0;
+                        list-style: none;
+                        width: 100%;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 18px;
+                    }
+                    .duplicate-card {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 14px;
+                        background: linear-gradient(90deg, #1e40af 0%, #fbbf24 100%);
+                        color: #fff;
+                        border-radius: 16px;
+                        padding: 10px 36px 10px 20px;
+                        width: 320px;
+                        min-width: 320px;
+                        max-width: 320px;
+                        font-size: 1.18em;
+                        font-weight: 900;
+                        margin-left: 0;
+                        box-shadow: 0 6px 24px #1e40af22;
+                        position: relative;
+                        transition: box-shadow 0.2s, transform 0.18s;
+                        animation: popIn 0.7s cubic-bezier(.68,-0.55,.27,1.55);
+                        border: 2.5px solid #1e40af;
+                        backdrop-filter: blur(4px) saturate(1.1);
+                        overflow: hidden;
+                        letter-spacing: 0.5px;
+                        justify-content: flex-end;
+                    }
+                    }
+                    .duplicate-card::before {
+                        content: '';
+                        position: absolute;
+                        left: 0; top: 0; bottom: 0;
+                        width: 60%;
+                        background: linear-gradient(120deg, #fff8 0%, #fbbf2444 100%);
+                        opacity: 0.18;
+                        z-index: 0;
+                        pointer-events: none;
+                        animation: shimmer 2.2s infinite linear;
+                    }
+                    @keyframes shimmer {
+                        0% { left: -60%; opacity: 0.12; }
+                        50% { left: 60%; opacity: 0.22; }
+                        100% { left: -60%; opacity: 0.12; }
+                    }
+                    @keyframes popIn {
+                        0% { transform: scale(0.7) translateY(20px); opacity: 0; }
+                        80% { transform: scale(1.12) translateY(-4px); opacity: 1; }
+                        100% { transform: scale(1) translateY(0); }
+                    }
+                    .duplicate-card .fa-circle-exclamation {
+                        margin-right: 8px;
+                        font-size: 1.35em;
+                        opacity: 0.97;
+                        color: #fbbf24;
+                        filter: drop-shadow(0 1px 2px #1e40af33);
+                        z-index: 2;
+                    }
+                    .duplicate-card .close-btn {
+                        margin-left: 14px;
+                        background: none;
+                        border: none;
+                        color: #1e40af;
+                        font-size: 1.22em;
+                        cursor: pointer;
+                        transition: color 0.2s, transform 0.2s;
+                        border-radius: 50%;
+                        width: 30px;
+                        height: 30px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 0;
+                        box-shadow: 0 2px 8px #fff2;
+                        z-index: 2;
+                    }
+                    .duplicate-card .close-btn:hover {
+                        color: #fbbf24;
+                        background: #1e40af22;
+                        transform: scale(1.22) rotate(12deg);
+                        animation: bounceClose 0.4s;
+                    }
+                    .duplicate-card .close-btn:focus {
+                        outline: 2px solid #fbbf24;
+                    }
+                    @keyframes bounceClose {
+                        0% { transform: scale(1.22) rotate(12deg); }
+                        50% { transform: scale(1.35) rotate(-8deg); }
+                        100% { transform: scale(1.22) rotate(12deg); }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="result-list">
+                    <h2><i class="fa-solid fa-trophy"></i> Upload Results</h2>
+                    <ul>
+            '''
+            for fname in processed_files:
+                result_html += f'<li style="display:flex;align-items:center;gap:18px;width:100%;"><span class="success" style="font-size:1.13em;">{fname} extracted successfully</span></li>'
+            for fname in duplicate_files:
+                    result_html += (
+                        f'<li style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:18px;">'
+                        f'<span style="font-weight:600;color:#1e40af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100% - 320px);">{fname}</span>'
+                        f'<span class="duplicate-card">'
+                        f'<i class="fa-solid fa-circle-exclamation"></i>'
+                        f'Already Extracted'
+                        f'<button class="close-btn" title="Remove" onclick="this.closest(\'li\').remove()">'
+                        f'<i class="fa-solid fa-xmark"></i>'
+                        f'</button>'
+                        f'</span></li>'
+                    )
+            for fname in failed_files:
+                result_html += f'<li style="display:flex;align-items:center;gap:18px;width:100%;"><span class="fail" style="font-size:1.13em;">{fname} failed to extract</span></li>'
+            result_html += '''
+                    </ul>
+                    <a href="/" style="display:inline-block;margin-top:20px;color:#fff;background:#1e40af;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:500;">Back to Upload</a>
+                </div>
+            </body>
+            </html>
+            '''
+            return result_html
         else:
             return "Error processing all files", 500
             
