@@ -20,7 +20,7 @@ from reportlab.lib import colors
 import io
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
 
 # Configure paths for your environment
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
@@ -370,7 +370,7 @@ def view_original_pdf(contract_id):
         
         filename = contract.get("filename")
         # Check uploads folder first
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file_path = os.path.join('unprocessed_pdfs', filename)
         # If not found, check uploaded_pdfs folder
         if not os.path.exists(file_path):
             file_path = os.path.join('uploaded_pdfs', filename)
@@ -1042,7 +1042,7 @@ def contracts_list():
                     100% { transform: rotate(360deg); }
                 }
 
-                @media (max-width: 768px) {
+                @med]ia (max-width: 768px) {
                     .container {
                         padding: 1rem;
                     }
@@ -3707,57 +3707,43 @@ def index():
         
         # Create upload folder if it doesn't exist
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-        
-        # Define your permanent storage folder
-        permanent_folder = "C:/Users/Yiion-35/OneDrive/Desktop/gem.gov.in/uploaded_pdfs"
-        os.makedirs(permanent_folder, exist_ok=True)
-        
+
         processed_files = []
         failed_files = []
-        
+
         # Process each file
         for file in files:
             if file.filename == '':
                 continue
-                
+
             filename = secure_filename(file.filename)
-            
-            # Save to temporary upload folder first
-            temp_file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(temp_file_path)
-            
-            # Copy file to your permanent folder
-            permanent_file_path = os.path.join(permanent_folder, filename)
-            import shutil
-            shutil.copy2(temp_file_path, permanent_file_path)
-            
-            # Delete file from temporary upload folder
-            os.remove(temp_file_path)
-            
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+
             try:
                 # Generate unique contract ID
                 contract_id = str(uuid.uuid4())
-                
+
                 # Extract using pdfplumber (organisation, buyer, seller)
-                organisation_data, buyer_data, seller_data = extract_details_with_pdfplumber(permanent_file_path)
+                organisation_data, buyer_data, seller_data = extract_details_with_pdfplumber(file_path)
                 # Extract product details separately using OCR
-                products_list, total_order_value = extract_product_details_ocr(permanent_file_path)
-                
+                products_list, total_order_value = extract_product_details_ocr(file_path)
+
                 # Extract complete PDF text for text_format column
-                complete_text = extract_complete_pdf_text(permanent_file_path)
-                
+                complete_text = extract_complete_pdf_text(file_path)
+
                 # Save to database
                 save_success = save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, complete_text)
-                
+
                 if save_success:
                     processed_files.append(filename)
                 else:
                     failed_files.append(filename)
-                    
+
             except Exception as e:
                 print(f"Error processing {filename}: {e}")
                 failed_files.append(filename)
-        
+
         # Redirect to contracts list page with success/failure info
         if processed_files:
             return redirect('/contracts')
@@ -3943,6 +3929,7 @@ def index():
                 border-radius: var(--radius-md);
                 background: var(--surface-color);
                 display: none;
+               margin-bottom: 20px;
             }
 
             .file-item {
@@ -4201,12 +4188,13 @@ def index():
             <div class="content">
                 <form method="POST" enctype="multipart/form-data" class="upload-form" id="uploadForm">
                     <div class="file-upload-area" id="uploadArea">
+                     <input type="file" name="pdf" accept=".pdf" multiple required class="file-input" id="fileInput">
                         <div class="upload-icon">
                             <i class="fas fa-cloud-upload-alt"></i>
                         </div>
                         <div class="upload-text">Drop your PDF files here</div>
                         <div class="upload-hint">or click to browse files (multiple files supported)</div>
-                        <input type="file" name="pdf" accept=".pdf" multiple required class="file-input" id="fileInput">
+                       
                     </div>
                     
                     <div class="selected-files" id="selectedFiles"></div>
