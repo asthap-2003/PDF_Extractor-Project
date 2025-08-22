@@ -29,9 +29,9 @@ POPPLER_PATH = r"C:\Users\Yiion-35\AppData\Local\Microsoft\WinGet\Packages\oschw
 # MySQL Database Configuration
 db_config = {
     'host': 'localhost',
-    'user': 'root',
-    'password': 'root',  # Same as in setup_database.py
-    'database': 'contract_data'
+    'user': 'gem',
+    'password': 'Y!!0n1z3#',  # Same as in setup_database.py
+    'database': 'gem'
 }
 
 def generate_pdf_report(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value):
@@ -830,7 +830,6 @@ def contracts_list():
                     background: var(--surface-color);
                     border-radius: 0;
                     box-shadow: var(--shadow-md);
-                    overflow: auto;
                     border: 1px solid var(--border-color);
                     margin-bottom: 2rem;
                     margin-top: 1rem;
@@ -845,7 +844,7 @@ def contracts_list():
                 table {
                     width: 100%;
                     border-collapse: collapse;
-                    min-width: 1200px;
+                    
                 }
 
                 th {

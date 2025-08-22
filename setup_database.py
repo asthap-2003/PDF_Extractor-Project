@@ -3,10 +3,10 @@ from mysql.connector import Error
 
 # MySQL Database Configuration
 db_config = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'root',  # Leave empty for WAMP default
-    'database': 'contract_data'
+     'host': 'localhost',
+    'user': 'gem',
+    'password': 'Y!!0n1z3#',  # Same as in setup_database.py
+    'database': 'gem'
 }
 
 def create_database():
