@@ -1,0 +1,7 @@
+Flask
+pdfplumber
+pdf2image
+pytesseract
+mysql-connector-python
+reportlab
+Werkzeug
