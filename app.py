@@ -908,7 +908,7 @@ def contracts_list():
 
                 .data-section {
                     margin-bottom: 1rem;
-                    padding: 0.75rem;
+                    padding: 0.35rem;
                     background: rgba(248, 250, 252, 0.5);
                     border-left: 3px solid var(--primary-color);
                 }
@@ -4613,11 +4613,9 @@ def index():
     </html>
     '''
 
-if __name__ == '__main__':
-    # Database and tables are already created by setup_database.py
-    # So we don't need to create them again here
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.run(debug=True, port=5001)
+
 
 
 

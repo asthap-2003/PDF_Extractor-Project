@@ -1136,7 +1136,7 @@
              th, td {
                  padding: 1rem 1.25rem;
              }
-         }
+        }
     </style>
 </head>
 <body>
@@ -1194,54 +1194,54 @@
         <div class="content-section">
             <!-- Enhanced Flash Messages -->
             <div class="flash-messages">
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                            <div class="flash-message flash-{{ category }}">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">
                                 <i class="fas fa-{% if category == 'success' %}check-circle{% else %}exclamation-circle{% endif %}"></i>
-                                {{ message }}
-                            </div>
-                        {% endfor %}
-                    {% endif %}
-                {% endwith %}
-            </div>
-
-            {% if contracts %}
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        </div>
+        
+        {% if contracts %}
                 <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Filename</th>
-                                <th>Organisation</th>
-                                <th>Seller Company</th>
-                                <th>Product</th>
-                                <th>Upload Date</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for contract in contracts %}
-                            <tr>
-                                <td>{{ loop.index }}</td>
-                                <td>{{ contract[1] }}</td>
-                                <td>{{ contract[3] or 'N/A' }}</td>
-                                <td>{{ contract[11] or 'N/A' }}</td>
-                                <td>{{ contract[15] or 'N/A' }}</td>
-                                <td>{{ contract[2] }}</td>
-                                <td>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Filename</th>
+                        <th>Organisation</th>
+                        <th>Seller Company</th>
+                        <th>Product</th>
+                        <th>Upload Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contract in contracts %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ contract[1] }}</td>
+                        <td>{{ contract[3] or 'N/A' }}</td>
+                        <td>{{ contract[11] or 'N/A' }}</td>
+                        <td>{{ contract[15] or 'N/A' }}</td>
+                        <td>{{ contract[2] }}</td>
+                        <td>
                                     <a href="/contract/{{ contract[0] }}" class="contract-link">
                                         <i class="fas fa-eye"></i>
                                         View Details
                                     </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
                 </div>
-            {% else %}
-                <div class="no-data">
+        {% else %}
+            <div class="no-data">
                     <i class="fas fa-file-contract"></i>
                     <h3>No contracts found</h3>
                     <p>Start your journey by uploading your first PDF contract for analysis.</p>
@@ -1249,8 +1249,8 @@
                         <i class="fas fa-upload"></i>
                         Upload First PDF
                     </a>
-                </div>
-            {% endif %}
+            </div>
+        {% endif %}
 
             <!-- Ultra Modern Pagination Section -->
             <div class="pagination-section">
