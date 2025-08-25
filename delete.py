@@ -27,10 +27,10 @@ print("Extracted Text:\n", text)
 
 # MySQL Database Configuration
 db_config = {
- 'host': 'localhost',
-    'user': 'root',
-    'password': 'root',  # Same as in setup_database.py
-    'database': 'contract_data'
+     'host': 'localhost',
+    'user': 'gem',
+    'password': 'Y!!0n1z3#',  # Same as in setup_database.py
+    'database': 'gem'
 }
 
 def save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, text_format):
