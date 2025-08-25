@@ -23,12 +23,24 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
 
 # Configure paths for your environment
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-POPPLER_PATH = r"C:\Users\Yiion-35\AppData\Local\Microsoft\WinGet\Packages\oschwartz10612.Poppler_Microsoft.Winget.Source_8wekyb3d8bbwe\poppler-24.08.0\Library\bin"
+# 
+
+filename = "invoice1.pdf"
+upload_folder = "unprocessed_pdfs"
+pdf_path = os.path.join(upload_folder, filename)
+
+# Convert PDF to images
+images = convert_from_path(pdf_path)
+
+# Run OCR on the first page (or all pages in a loop)
+text = pytesseract.image_to_string(images[0], lang='eng')
+
+print("Extracted Text:\n", text)
+
 
 # MySQL Database Configuration
 db_config = {
-    'host': 'localhost',
+     'host': 'localhost',
     'user': 'gem',
     'password': 'Y!!0n1z3#',  # Same as in setup_database.py
     'database': 'gem'
@@ -830,6 +842,7 @@ def contracts_list():
                     background: var(--surface-color);
                     border-radius: 0;
                     box-shadow: var(--shadow-md);
+                    overflow: auto;
                     border: 1px solid var(--border-color);
                     margin-bottom: 2rem;
                     margin-top: 1rem;
@@ -844,7 +857,7 @@ def contracts_list():
                 table {
                     width: 100%;
                     border-collapse: collapse;
-                    
+                    min-width: 1200px;
                 }
 
                 th {
@@ -907,7 +920,7 @@ def contracts_list():
 
                 .data-section {
                     margin-bottom: 1rem;
-                    padding: 0.35rem;
+                    padding: 0.75rem;
                     background: rgba(248, 250, 252, 0.5);
                     border-left: 3px solid var(--primary-color);
                 }
@@ -4612,9 +4625,11 @@ def index():
     </html>
     '''
 
-if __name__ == "__main__":
-    app.run(debug=True, port=5001)
-
+if __name__ == '__main__':
+    # Database and tables are already created by setup_database.py
+    # So we don't need to create them again here
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    app.run(debug=True)
 
 
 
