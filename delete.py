@@ -10,8 +10,10 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UNPROCESSED_DIR = os.path.join(BASE_DIR, "unprocessed_pdfs")
 UPLOADED_DIR = os.path.join(BASE_DIR, "uploaded_pdfs")
 
-# ✅ Linux server paths (check with: which tesseract && which pdftoppm)
+# Linux server par installed tesseract no exact path
 pytesseract.pytesseract.tesseract_cmd = r"/usr/bin/tesseract"
+
+# Poppler path (pdftoppm / pdfinfo location)
 POPPLER_PATH = r"/usr/bin"
 
 # Database config (update with your credentials)
@@ -22,16 +24,18 @@ DB_CONFIG = {
     'database': 'gem'
 }
 
+
 # --- FUNCTIONS ---
 def extract_text_from_pdf_ocr(pdf_path):
     """Extract text from PDF using OCR"""
     try:
-        # ✅ Poppler path add kari didhu server mate
         images = convert_from_path(pdf_path, dpi=300, poppler_path=POPPLER_PATH)
         text = ""
-        for img in images:
-            text += pytesseract.image_to_string(img, lang="eng+hin")  # ✅ English + Hindi OCR
-        return text.strip()
+        for page_num, img in enumerate(images, start=1):
+            page_text = pytesseract.image_to_string(img, lang="eng")
+            print(f"📄 Page {page_num} extracted, length={len(page_text)}")
+            text += page_text + "\n"
+        return text if text.strip() else None
     except Exception as e:
         print(f"❌ Error extracting text from {pdf_path}: {e}")
         return None
