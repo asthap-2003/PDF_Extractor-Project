@@ -22,28 +22,28 @@ import io
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
 
-# ---------- OCR configuration for Linux server ----------
-# Make sure these are installed:
-#   sudo apt-get update
-#   sudo apt-get install -y tesseract-ocr poppler-utils
+# Configure paths for your environment
+# 
+# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+# POPPLER_PATH = r"C:\Users\Yiion-35\AppData\Local\Microsoft\WinGet\Packages\oschwartz10612.Poppler_Microsoft.Winget.Source_8wekyb3d8bbwe\poppler-24.08.0\Library\bin"
 
-TESSERACT_BIN = "/usr/bin/tesseract"
-pytesseract.pytesseract.tesseract_cmd = (
-    TESSERACT_BIN if os.path.exists(TESSERACT_BIN) else "tesseract"
-)
+# --- Linux Server Config for Tesseract & Poppler ---
 
-# pdf2image will use poppler (pdftoppm) from PATH in Linux (usually /usr/bin)
-POPPLER_PATH = "/usr/bin"   # fallback path
+# Set correct path for Tesseract binary
+pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'  # check with `which tesseract` on your server
+
+# Set correct path for Poppler binaries
+POPPLER_PATH = r"/usr/bin"  # check with `which pdftoppm` and other poppler utils
 
 
-# ---------- MySQL Database Configuration ----------
+
+# MySQL Database Configuration
 db_config = {
-    'host': 'localhost',
+     'host': 'localhost',
     'user': 'gem',
     'password': 'Y!!0n1z3#',  # Same as in setup_database.py
     'database': 'gem'
 }
-
 
 def generate_pdf_report(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value):
     """Generate a PDF report from the extracted data"""
@@ -3716,7 +3716,295 @@ def index():
         if not files or all(file.filename == '' for file in files):
             return "No files selected", 400
         
-      return '''
+        # Create upload folder if it doesn't exist
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+        processed_files = []
+        failed_files = []
+        duplicate_files = []
+
+        # Connect to database once for all checks
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True, buffered=True)
+
+        for file in files:
+            if file.filename == '':
+                continue
+
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+
+            # Check if this file has already been extracted (exists in contracts table)
+            cursor.execute("SELECT contract_id FROM contracts WHERE filename = %s", (filename,))
+            result = cursor.fetchone()
+            # Always fetch result before next execute to avoid 'Unread result found' error
+            if result:
+                duplicate_files.append(filename)
+                # Optionally, remove the just-uploaded file to avoid clutter
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                continue
+
+            try:
+                # Generate unique contract ID
+                contract_id = str(uuid.uuid4())
+
+                # Extract using pdfplumber (organisation, buyer, seller)
+                organisation_data, buyer_data, seller_data = extract_details_with_pdfplumber(file_path)
+                # Extract product details separately using OCR
+                products_list, total_order_value = extract_product_details_ocr(file_path)
+
+                # Extract complete PDF text for text_format column
+                complete_text = extract_complete_pdf_text(file_path)
+
+                # Save to database
+                save_success = save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, complete_text)
+
+                if save_success:
+                    processed_files.append(filename)
+                else:
+                    failed_files.append(filename)
+
+            except Exception as e:
+                print(f"Error processing {filename}: {e}")
+                failed_files.append(filename)
+
+        cursor.close()
+        conn.close()
+
+        # Show upload result with red error for duplicates
+        if processed_files or duplicate_files or failed_files:
+            # Build HTML result
+            result_html = '''
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Upload Result</title>
+                <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+                <style>
+                    body {
+                        font-family: 'Inter', Arial, sans-serif;
+                        background: #f8fafc;
+                        color: #1e293b;
+                        min-height: 100vh;
+                        background-image: url('https://www.transparenttextures.com/patterns/cubes.png'), linear-gradient(120deg, #fbbf24 0%, #1e40af 100%);
+                        background-blend-mode: lighten;
+                    }
+                    .result-list {
+                        width: 90vw;
+                        max-width: 900px;
+                        margin: 64px auto;
+                        background: #fff;
+                        border-radius: 10px;
+                        box-shadow: none;
+                        padding: 44px 40px 32px 40px;
+                        border: 1.5px solid #e2e8f0;
+                        position: relative;
+                        overflow: visible;
+                        z-index: 1;
+                        animation: none;
+                    }
+                    .result-list::before {
+                        display: none;
+                    }
+                    @keyframes floatCard {
+                        0% { transform: translateY(40px) scale(0.95); opacity: 0; }
+                        80% { transform: translateY(-8px) scale(1.03); opacity: 1; }
+                        100% { transform: translateY(0) scale(1); }
+                    }
+                    @keyframes borderGlow {
+                        0% { opacity: 0.18; filter: blur(8px); }
+                        100% { opacity: 0.32; filter: blur(16px); }
+                    }
+                    .result-list h2 {
+                        margin-bottom: 30px;
+                        color: #1e40af;
+                        font-size: 2.3rem;
+                        font-weight: 900;
+                        letter-spacing: 0.5px;
+                        text-shadow: 0 2px 12px #fbbf2433, 0 1px 0 #fff;
+                        display: flex;
+                        align-items: center;
+                        gap: 14px;
+                    }
+                    .result-list h2 .fa-trophy {
+                        color: #fbbf24;
+                        text-shadow: 0 2px 8px #1e40af44;
+                        font-size: 1.3em;
+                        animation: trophySpin 2.5s infinite linear;
+                    }
+                    @keyframes trophySpin {
+                        0% { transform: rotate(-10deg); }
+                        50% { transform: rotate(10deg); }
+                        100% { transform: rotate(-10deg); }
+                    }
+                    .success {
+                        color: #1e40af;
+                        font-weight: 700;
+                        font-size: 1.13em;
+                        position: relative;
+                        z-index: 2;
+                    }
+                    .success::after {
+                        content: '';
+                        display: inline-block;
+                        width: 18px;
+                        height: 18px;
+                        background: url('https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f389.png') no-repeat center/contain;
+                        margin-left: 7px;
+                        vertical-align: middle;
+                        animation: confettiPop 1.2s cubic-bezier(.68,-0.55,.27,1.55);
+                    }
+                    @keyframes confettiPop {
+                        0% { transform: scale(0.2) translateY(10px); opacity: 0; }
+                        80% { transform: scale(1.2) translateY(-4px); opacity: 1; }
+                        100% { transform: scale(1) translateY(0); }
+                    }
+                    .fail {
+                        color: #f43f5e;
+                        font-weight: 700;
+                        font-size: 1.13em;
+                        position: relative;
+                        z-index: 2;
+                    }
+                    ul {
+                        padding-left: 0;
+                        margin-bottom: 0;
+                        list-style: none;
+                        width: 100%;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 18px;
+                    }
+                    .duplicate-card {
+                        background: #fff;
+                        color: #1e40af;
+                        border-radius: 6px;
+                        padding: 0 18px 0 12px;
+                        width: 320px;
+                        min-width: 320px;
+                        max-width: 320px;
+                        height: 44px;
+                        display: flex;
+                        align-items: center;
+                        font-size: 1.08em;
+                        font-weight: 600;
+                        margin-left: 0;
+                        box-shadow: none;
+                        position: relative;
+                        transition: background 0.18s;
+                        border: 1.2px solid #e2e8f0;
+                        letter-spacing: 0.1px;
+                        justify-content: flex-end;
+                        gap: 10px;
+                    }
+                    .duplicate-card:hover {
+                        background: #f1f5f9;
+                        box-shadow: none;
+                    }
+                    }
+                    }
+                    .duplicate-card::before {
+                        content: '';
+                        position: absolute;
+                        left: 0; top: 0; bottom: 0;
+                        width: 60%;
+                        background: linear-gradient(120deg, #fff8 0%, #fbbf2444 100%);
+                        opacity: 0.18;
+                        z-index: 0;
+                        pointer-events: none;
+                        animation: shimmer 2.2s infinite linear;
+                    }
+                    @keyframes shimmer {
+                        0% { left: -60%; opacity: 0.12; }
+                        50% { left: 60%; opacity: 0.22; }
+                        100% { left: -60%; opacity: 0.12; }
+                    }
+                    @keyframes popIn {
+                        0% { transform: scale(0.7) translateY(20px); opacity: 0; }
+                        80% { transform: scale(1.12) translateY(-4px); opacity: 1; }
+                        100% { transform: scale(1) translateY(0); }
+                    }
+                    .duplicate-card .fa-circle-exclamation {
+                        margin-right: 8px;
+                        font-size: 1.15em;
+                        opacity: 0.97;
+                        color: #1e40af;
+                        background: #f1f5f9;
+                        border-radius: 50%;
+                        padding: 4px;
+                        z-index: 2;
+                    }
+                    .duplicate-card .close-btn {
+                        margin-left: 10px;
+                        background: none;
+                        border: none;
+                        color: #1e40af;
+                        font-size: 1.08em;
+                        cursor: pointer;
+                        transition: color 0.2s, background 0.2s;
+                        border-radius: 50%;
+                        width: 28px;
+                        height: 28px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 0;
+                        box-shadow: none;
+                        z-index: 2;
+                    }
+                    .duplicate-card .close-btn:hover {
+                        color: #fff;
+                        background: #1e40af;
+                        animation: none;
+                    }
+                    .duplicate-card .close-btn:focus {
+                        outline: 2px solid #1e40af;
+                    }
+                    @keyframes bounceClose {
+                        0% { transform: scale(1.22) rotate(12deg); }
+                        50% { transform: scale(1.35) rotate(-8deg); }
+                        100% { transform: scale(1.22) rotate(12deg); }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="result-list">
+                    <h2 style="color:#1e40af;font-weight:900;">Upload Results</h2>
+                    <ul>
+            '''
+            for fname in processed_files:
+                result_html += f'<li style="display:flex;align-items:center;gap:18px;width:100%;"><span class="success" style="font-size:1.13em;">{fname} extracted successfully</span></li>'
+            for fname in duplicate_files:
+                    result_html += (
+                        f'<li style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:18px;">'
+                        f'<span style="font-weight:600;color:#1e40af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100% - 340px);">{fname}</span>'
+                        f'<span class="duplicate-card">'
+                        f'<i class="fa-solid fa-circle-exclamation"></i>'
+                        f'<span style="margin-right:12px;">Already Extracted</span>'
+                        f'<button class="close-btn" title="Remove" onclick="this.closest(\'li\').remove()" style="margin-left:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:none;">'
+                        f'<i class="fa-solid fa-xmark"></i>'
+                        f'</button>'
+                        f'</span></li>'
+                    )
+            for fname in failed_files:
+                result_html += f'<li style="display:flex;align-items:center;gap:18px;width:100%;"><span class="fail" style="font-size:1.13em;">{fname} failed to extract</span></li>'
+            result_html += '''
+                    </ul>
+                    <a href="/" style="display:inline-block;margin-top:20px;color:#fff;background:#1e40af;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:500;">Back to Upload</a>
+                </div>
+            </body>
+            </html>
+            '''
+            return result_html
+        else:
+            return "Error processing all files", 500
+            
+    # GET method: Present upload form
+    return '''
     <!DOCTYPE html>
     <html lang="en">
     <head>
