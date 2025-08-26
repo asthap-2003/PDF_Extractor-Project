@@ -19,35 +19,24 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib import colors
 import io
 
-import os
-import re
-import pdfplumber
-import pytesseract
-from pdf2image import convert_from_path
-from werkzeug.utils import secure_filename
-import mysql.connector
-from mysql.connector import Error
-import uuid
-from datetime import datetime
-import shutil
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
 
-# -------------------- Linux Server Config --------------------
+# Configure paths for your environment
+# 
+# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+# POPPLER_PATH = r"C:\Users\Yiion-35\AppData\Local\Microsoft\WinGet\Packages\oschwartz10612.Poppler_Microsoft.Winget.Source_8wekyb3d8bbwe\poppler-24.08.0\Library\bin"
 
-# Linux ma tesseract system PATH ma hoy to path set karvani jaroor nathi.
-# Pan jo jaroor hoy to generally /usr/bin/tesseract hoy chhe:
-pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
+pytesseract.pytesseract.tesseract_cmd = r'tesseract'  
 
-# Poppler binaries Linux ma install thay chhe /usr/bin andar (pdftoppm, pdftocairo etc.)
-POPPLER_PATH = r"/usr/bin"
 
-# -------------------- Database Config --------------------
+# MySQL Database Configuration
 db_config = {
-    'host': 'localhost',
+     'host': 'localhost',
     'user': 'gem',
-    'password': 'Y!!0n1z3#',
+    'password': 'Y!!0n1z3#',  # Same as in setup_database.py
     'database': 'gem'
 }
-
 
 def generate_pdf_report(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value):
     """Generate a PDF report from the extracted data"""
@@ -3778,7 +3767,7 @@ def index():
         conn.close()
 
         # Show upload result with red error for duplicates
-         if processed_files or duplicate_files or failed_files:
+        if processed_files or duplicate_files or failed_files:
             # Build HTML result
             result_html = '''
             <!DOCTYPE html>
@@ -4632,8 +4621,7 @@ if __name__ == '__main__':
     # Database and tables are already created by setup_database.py
     # So we don't need to create them again here
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    # app.run(debug=True)
-    app.run(host="0.0.0.0",port=5001)
+    app.run(debug=True)
 
 
 
