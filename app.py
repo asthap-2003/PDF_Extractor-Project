@@ -3598,9 +3598,8 @@ def extract_details_with_pdfplumber(pdf_path):
             if (all(data_org.values()) and all(data_buyer.values()) and all(data_seller.values())):
                 break
     return data_org, data_buyer, data_seller
-
 def extract_text_from_pdf_ocr(pdf_path):
-    images = convert_from_path(pdf_path, dpi=300, poppler_path=POPPLER_PATH)
+    images = convert_from_path(pdf_path, dpi=300)  # poppler_path nathi aapvu
     full_text = ""
     for img in images:
         text = pytesseract.image_to_string(img, lang='eng+hin')
@@ -3608,38 +3607,28 @@ def extract_text_from_pdf_ocr(pdf_path):
     return full_text
 
 def extract_complete_pdf_text(pdf_path):
-    """Extract complete text from PDF using both pdfplumber and OCR for maximum coverage"""
     complete_text = ""
-    
-    # First try pdfplumber for text extraction - get ALL text from ALL pages
     try:
         with pdfplumber.open(pdf_path) as pdf:
-            print(f"  Extracting text from {len(pdf.pages)} pages using pdfplumber...")
             for page_num, page in enumerate(pdf.pages, 1):
                 text = page.extract_text()
                 if text:
                     complete_text += f"\n--- Page {page_num} ---\n"
                     complete_text += text + "\n"
-                    print(f"    Page {page_num}: {len(text)} characters extracted")
     except Exception as e:
         print(f"Error extracting text with pdfplumber: {e}")
-    
-    # Always use OCR to get complete PDF text, regardless of pdfplumber result
+
     try:
-        print(f"  Extracting text using OCR...")
         ocr_text = extract_text_from_pdf_ocr(pdf_path)
-        # Combine both results for maximum coverage
         complete_text += "\n" + ocr_text
     except Exception as e:
         print(f"Error extracting text with OCR: {e}")
         complete_text += f"\n[OCR Error: {e}]"
-    
-    # Ensure we always return some text
+
     if not complete_text.strip():
         complete_text = f"[No text extracted from {os.path.basename(pdf_path)}]"
-    
-    print(f"  Total extracted text length: {len(complete_text)} characters")
-    return complete_text.strip()
+
+    return complete_text
 
 def get_value(lines, key):
     for line in lines:
@@ -3663,9 +3652,13 @@ def get_total_order_value(lines, key):
                 return value
     return None
 
-def extract_product_details_ocr(pdf_path):
-    text = extract_text_from_pdf_ocr(pdf_path)
-    lines = text.splitlines()
+def extract_text_from_pdf_ocr(pdf_path):
+    images = convert_from_path(pdf_path, dpi=300)   # server ma poppler-utils install hoy to direct chale
+    full_text = ""
+    for img in images:
+        text = pytesseract.image_to_string(img, lang='eng+hin')  # multi-language
+        full_text += text + "\n"
+    return full_text
     
     # Find all product entries by looking for "Product Name" pattern
     products = []
@@ -4626,12 +4619,9 @@ def index():
     </body>
     </html>
     '''
-
 if __name__ == '__main__':
-    # Database and tables are already created by setup_database.py
-    # So we don't need to create them again here
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)   # debug=False for server
 
 
 
