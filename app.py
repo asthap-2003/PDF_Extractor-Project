@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template_string, send_file, redirect, jsonify
+from flask import Flask, request, render_template_string, send_file, redirect, jsonify ,url_for
 import json
 import os
 import re
@@ -19,9 +19,33 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib import colors
 import io
 
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
 
+app = Flask(__name__)
+
+UPLOAD_FOLDER = '/home/gem/public_html/PDF_Extractor-Project/uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # folder create if not exists
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+ALLOWED_EXTENSIONS = {'pdf'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/', methods=['GET', 'POST'])
+def upload_file():
+    if request.method == 'POST':
+        uploaded_files = request.files.getlist('pdf')  # multiple files
+        saved_files = []
+        for file in uploaded_files:
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(file_path)
+                saved_files.append(file_path)
+        return f'Files uploaded successfully: {saved_files}'
+    
+    # Return your HTML + JS template here (the code you pasted)
+    return render_template_string("""PASTE YOUR HTML/JS HERE""")
 # Configure paths for your environment
 # 
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
@@ -3599,7 +3623,7 @@ def extract_details_with_pdfplumber(pdf_path):
                 break
     return data_org, data_buyer, data_seller
 def extract_text_from_pdf_ocr(pdf_path):
-    images = convert_from_path(pdf_path, dpi=300)  # poppler_path nathi aapvu
+    images = convert_from_path(pdf_path, dpi=200)  # poppler_path nathi aapvu
     full_text = ""
     for img in images:
         text = pytesseract.image_to_string(img, lang='eng+hin')
@@ -3653,7 +3677,7 @@ def get_total_order_value(lines, key):
     return None
 
 def extract_text_from_pdf_ocr(pdf_path):
-    images = convert_from_path(pdf_path, dpi=300)   # server ma poppler-utils install hoy to direct chale
+    images = convert_from_path(pdf_path, dpi=200)   # server ma poppler-utils install hoy to direct chale
     full_text = ""
     for img in images:
         text = pytesseract.image_to_string(img, lang='eng+hin')  # multi-language
