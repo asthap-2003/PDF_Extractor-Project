@@ -3735,6 +3735,9 @@ def index():
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
 
+            print("Saved file to:", file_path)
+            print("File exists?", os.path.exists(file_path))
+
             # Check if this file has already been extracted (exists in contracts table)
             cursor.execute("SELECT contract_id FROM contracts WHERE filename = %s", (filename,))
             result = cursor.fetchone()
