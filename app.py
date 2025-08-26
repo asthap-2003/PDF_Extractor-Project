@@ -22,21 +22,28 @@ import io
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
 
-# Configure paths for your environment
-# 
-# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-# POPPLER_PATH = r"C:\Users\Yiion-35\AppData\Local\Microsoft\WinGet\Packages\oschwartz10612.Poppler_Microsoft.Winget.Source_8wekyb3d8bbwe\poppler-24.08.0\Library\bin"
+# ---------- OCR configuration for Linux server ----------
+# Make sure these are installed:
+#   sudo apt-get update
+#   sudo apt-get install -y tesseract-ocr poppler-utils
 
-pytesseract.pytesseract.tesseract_cmd = r'tesseract'  
+TESSERACT_BIN = "/usr/bin/tesseract"
+pytesseract.pytesseract.tesseract_cmd = (
+    TESSERACT_BIN if os.path.exists(TESSERACT_BIN) else "tesseract"
+)
+
+# pdf2image will use poppler (pdftoppm) from PATH in Linux (usually /usr/bin)
+POPPLER_PATH = "/usr/bin"   # fallback path
 
 
-# MySQL Database Configuration
+# ---------- MySQL Database Configuration ----------
 db_config = {
-     'host': 'localhost',
+    'host': 'localhost',
     'user': 'gem',
     'password': 'Y!!0n1z3#',  # Same as in setup_database.py
     'database': 'gem'
 }
+
 
 def generate_pdf_report(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value):
     """Generate a PDF report from the extracted data"""
