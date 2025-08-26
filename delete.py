@@ -16,7 +16,9 @@ import shutil
 # POPPLER_PATH = r"C:\Users\Yiion-35\AppData\Local\Microsoft\WinGet\Packages\oschwartz10612.Poppler_Microsoft.Winget.Source_8wekyb3d8bbwe\poppler-24.08.0\Library\bin"
 
 
-pytesseract.pytesseract.tesseract_cmd = r'tesseract'  
+pytesseract.pytesseract.tesseract_cmd = "tesseract"
+images = convert_from_path(pdf_path, dpi=300)  # poppler_path na aapo
+
 
 # MySQL Database Configuration
 db_config = {
