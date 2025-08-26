@@ -12,18 +12,9 @@ import shutil
 
 # Configure paths for your environment
 # 
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+POPPLER_PATH = r"C:\Users\Yiion-35\AppData\Local\Microsoft\WinGet\Packages\oschwartz10612.Poppler_Microsoft.Winget.Source_8wekyb3d8bbwe\poppler-24.08.0\Library\bin"
 
-filename = "invoice1.pdf"
-upload_folder = "unprocessed_pdfs"
-pdf_path = os.path.join(upload_folder, filename)
-
-# Convert PDF to images
-images = convert_from_path(pdf_path)
-
-# Run OCR on the first page (or all pages in a loop)
-text = pytesseract.image_to_string(images[0], lang='eng')
-
-print("Extracted Text:\n", text)
 
 # MySQL Database Configuration
 db_config = {
