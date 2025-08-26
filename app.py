@@ -18,14 +18,24 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 import io
+import os
+import re
+import pdfplumber
+import pytesseract
+from pdf2image import convert_from_path
+from werkzeug.utils import secure_filename
+import mysql.connector
+from mysql.connector import Error
+import uuid
+from datetime import datetime
+import shutil
 
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
+# Linux ma tesseract system PATH ma hoy to path set karvani jaroor nathi.
+# Pan jo jaroor hoy to generally /usr/bin/tesseract hoy chhe:
+pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 
-# Configure paths for your environment
-# 
-
-pytesseract.pytesseract.tesseract_cmd = r'tesseract'  
+# Poppler binaries Linux ma install thay chhe /usr/bin andar (pdftoppm, pdftocairo etc.)
+POPPLER_PATH = r"/usr/bin"
 
 # MySQL Database Configuration
 db_config = {
