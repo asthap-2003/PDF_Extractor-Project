@@ -25,18 +25,7 @@ app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
 # Configure paths for your environment
 # 
 
-filename = "invoice1.pdf"
-upload_folder = "unprocessed_pdfs"
-pdf_path = os.path.join(upload_folder, filename)
-
-# Convert PDF to images
-images = convert_from_path(pdf_path)
-
-# Run OCR on the first page (or all pages in a loop)
-text = pytesseract.image_to_string(images[0], lang='eng')
-
-print("Extracted Text:\n", text)
-
+pytesseract.pytesseract.tesseract_cmd = r'tesseract'  
 
 # MySQL Database Configuration
 db_config = {
