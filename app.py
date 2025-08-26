@@ -3716,7 +3716,7 @@ def index():
         if not files or all(file.filename == '' for file in files):
             return "No files selected", 400
         
-      return   '''
+      return '''
     <!DOCTYPE html>
     <html lang="en">
     <head>
