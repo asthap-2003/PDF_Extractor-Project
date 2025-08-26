@@ -3,6 +3,7 @@ import shutil
 import pytesseract
 from pdf2image import convert_from_path
 import mysql.connector
+import uuid
 
 # --- CONFIGURATION ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -34,17 +35,27 @@ def extract_text_from_pdf_ocr(pdf_path):
         return None
 
 
+
+
 def save_to_database(filename, extracted_text):
-    """Save extracted text into MySQL"""
+    """Save extracted text into contracts table in MySQL"""
     try:
         connection = mysql.connector.connect(**DB_CONFIG)
         cursor = connection.cursor()
-        query = "INSERT INTO pdf_texts (filename, content) VALUES (%s, %s)"
-        cursor.execute(query, (filename, extracted_text))
+
+        # unique contract_id generate karo
+        contract_id = str(uuid.uuid4())
+
+        query = """
+        INSERT INTO contracts (contract_id, filename, upload_time, text_format)
+        VALUES (%s, %s, NOW(), %s)
+        """
+        cursor.execute(query, (contract_id, filename, extracted_text))
+
         connection.commit()
         cursor.close()
         connection.close()
-        print(f"💾 Saved {filename} to database.")
+        print(f"💾 Saved {filename} into contracts table.")
     except Exception as e:
         print(f"❌ Database error for {filename}: {e}")
 
