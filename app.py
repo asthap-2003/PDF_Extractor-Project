@@ -18,6 +18,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 import io
+
 import os
 import re
 import pdfplumber
@@ -30,6 +31,8 @@ import uuid
 from datetime import datetime
 import shutil
 
+# -------------------- Linux Server Config --------------------
+
 # Linux ma tesseract system PATH ma hoy to path set karvani jaroor nathi.
 # Pan jo jaroor hoy to generally /usr/bin/tesseract hoy chhe:
 pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
@@ -37,13 +40,14 @@ pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 # Poppler binaries Linux ma install thay chhe /usr/bin andar (pdftoppm, pdftocairo etc.)
 POPPLER_PATH = r"/usr/bin"
 
-# MySQL Database Configuration
+# -------------------- Database Config --------------------
 db_config = {
-     'host': 'localhost',
+    'host': 'localhost',
     'user': 'gem',
-    'password': 'Y!!0n1z3#',  # Same as in setup_database.py
+    'password': 'Y!!0n1z3#',
     'database': 'gem'
 }
+
 
 def generate_pdf_report(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value):
     """Generate a PDF report from the extracted data"""
@@ -3774,7 +3778,7 @@ def index():
         conn.close()
 
         # Show upload result with red error for duplicates
-        if processed_files or duplicate_files or failed_files:
+         if processed_files or duplicate_files or failed_files:
             # Build HTML result
             result_html = '''
             <!DOCTYPE html>
