@@ -3778,7 +3778,7 @@ def index():
         conn.close()
 
         # Show upload result with red error for duplicates
-       
+         if processed_files or duplicate_files or failed_files:
             # Build HTML result
             result_html = '''
             <!DOCTYPE html>
