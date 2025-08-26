@@ -14,10 +14,10 @@ pytesseract.pytesseract.tesseract_cmd = "tesseract"
 
 # Database config (update with your credentials)
 DB_CONFIG = {
-    "host": "localhost",
-    "user": "root",
-    "password": "yourpassword",
-    "database": "yourdbname"
+    'host': 'localhost',
+    'user': 'gem',
+    'password': 'Y!!0n1z3#',  # Same as in setup_database.py
+    'database': 'gem'
 }
 
 # --- FUNCTIONS ---
