@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template_string, send_file, redirect, jsonify ,url_for
+from flask import Flask, request, render_template_string, send_file, redirect, jsonify
 import json
 import os
 import re
@@ -19,46 +19,15 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib import colors
 import io
 
-
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
 
-UPLOAD_FOLDER = '/home/gem/public_html/PDF_Extractor-Project/uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # folder create if not exists
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-ALLOWED_EXTENSIONS = {'pdf'}
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-@app.route('/', methods=['GET', 'POST'])
-def upload_file():
-    if request.method == 'POST':
-        uploaded_files = request.files.getlist('pdf')  # multiple files
-        saved_files = []
-        for file in uploaded_files:
-            if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(file_path)
-                saved_files.append(file_path)
-        return f'Files uploaded successfully: {saved_files}'
-    
-    # Return your HTML + JS template here (the code you pasted)
-    return render_template_string("""PASTE YOUR HTML/JS HERE""")
 # Configure paths for your environment
 # 
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 # POPPLER_PATH = r"C:\Users\Yiion-35\AppData\Local\Microsoft\WinGet\Packages\oschwartz10612.Poppler_Microsoft.Winget.Source_8wekyb3d8bbwe\poppler-24.08.0\Library\bin"
 
-# --- Linux Server Config for Tesseract & Poppler ---
-
-# Set correct path for Tesseract binary
-pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'  # check with `which tesseract` on your server
-
-# Set correct path for Poppler binaries
-POPPLER_PATH = r"/usr/bin"  # check with `which pdftoppm` and other poppler utils
-
+pytesseract.pytesseract.tesseract_cmd = r'tesseract'  
 
 
 # MySQL Database Configuration
@@ -3622,8 +3591,9 @@ def extract_details_with_pdfplumber(pdf_path):
             if (all(data_org.values()) and all(data_buyer.values()) and all(data_seller.values())):
                 break
     return data_org, data_buyer, data_seller
+
 def extract_text_from_pdf_ocr(pdf_path):
-    images = convert_from_path(pdf_path, dpi=200)  # poppler_path nathi aapvu
+    images = convert_from_path(pdf_path, dpi=300, poppler_path=POPPLER_PATH)
     full_text = ""
     for img in images:
         text = pytesseract.image_to_string(img, lang='eng+hin')
@@ -3631,28 +3601,38 @@ def extract_text_from_pdf_ocr(pdf_path):
     return full_text
 
 def extract_complete_pdf_text(pdf_path):
+    """Extract complete text from PDF using both pdfplumber and OCR for maximum coverage"""
     complete_text = ""
+    
+    # First try pdfplumber for text extraction - get ALL text from ALL pages
     try:
         with pdfplumber.open(pdf_path) as pdf:
+            print(f"  Extracting text from {len(pdf.pages)} pages using pdfplumber...")
             for page_num, page in enumerate(pdf.pages, 1):
                 text = page.extract_text()
                 if text:
                     complete_text += f"\n--- Page {page_num} ---\n"
                     complete_text += text + "\n"
+                    print(f"    Page {page_num}: {len(text)} characters extracted")
     except Exception as e:
         print(f"Error extracting text with pdfplumber: {e}")
-
+    
+    # Always use OCR to get complete PDF text, regardless of pdfplumber result
     try:
+        print(f"  Extracting text using OCR...")
         ocr_text = extract_text_from_pdf_ocr(pdf_path)
+        # Combine both results for maximum coverage
         complete_text += "\n" + ocr_text
     except Exception as e:
         print(f"Error extracting text with OCR: {e}")
         complete_text += f"\n[OCR Error: {e}]"
-
+    
+    # Ensure we always return some text
     if not complete_text.strip():
         complete_text = f"[No text extracted from {os.path.basename(pdf_path)}]"
-
-    return complete_text
+    
+    print(f"  Total extracted text length: {len(complete_text)} characters")
+    return complete_text.strip()
 
 def get_value(lines, key):
     for line in lines:
@@ -3676,13 +3656,9 @@ def get_total_order_value(lines, key):
                 return value
     return None
 
-def extract_text_from_pdf_ocr(pdf_path):
-    images = convert_from_path(pdf_path, dpi=200)   # server ma poppler-utils install hoy to direct chale
-    full_text = ""
-    for img in images:
-        text = pytesseract.image_to_string(img, lang='eng+hin')  # multi-language
-        full_text += text + "\n"
-    return full_text
+def extract_product_details_ocr(pdf_path):
+    text = extract_text_from_pdf_ocr(pdf_path)
+    lines = text.splitlines()
     
     # Find all product entries by looking for "Product Name" pattern
     products = []
@@ -3751,9 +3727,6 @@ def index():
             filename = secure_filename(file.filename)
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
-
-            print("Saved file to:", file_path)
-            print("File exists?", os.path.exists(file_path))
 
             # Check if this file has already been extracted (exists in contracts table)
             cursor.execute("SELECT contract_id FROM contracts WHERE filename = %s", (filename,))
