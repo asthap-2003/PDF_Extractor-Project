@@ -18,6 +18,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 import io
+import subprocess
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
@@ -3709,9 +3710,7 @@ def index():
         # Create upload folder if it doesn't exist
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-        processed_files = []
-        failed_files = []
-        duplicate_files = []
+   
 
         # Connect to database once for all checks
         conn = mysql.connector.connect(**db_config)
@@ -3724,41 +3723,9 @@ def index():
             filename = secure_filename(file.filename)
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
-
-            # Check if this file has already been extracted (exists in contracts table)
-            cursor.execute("SELECT contract_id FROM contracts WHERE filename = %s", (filename,))
-            result = cursor.fetchone()
-            # Always fetch result before next execute to avoid 'Unread result found' error
-            if result:
-                duplicate_files.append(filename)
-                # Optionally, remove the just-uploaded file to avoid clutter
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-                continue
-
-            try:
-                # Generate unique contract ID
-                contract_id = str(uuid.uuid4())
-
-                # Extract using pdfplumber (organisation, buyer, seller)
-                organisation_data, buyer_data, seller_data = extract_details_with_pdfplumber(file_path)
-                # Extract product details separately using OCR
-                products_list, total_order_value = extract_product_details_ocr(file_path)
-
-                # Extract complete PDF text for text_format column
-                complete_text = extract_complete_pdf_text(file_path)
-
-                # Save to database
-                save_success = save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, complete_text)
-
-                if save_success:
-                    processed_files.append(filename)
-                else:
-                    failed_files.append(filename)
-
-            except Exception as e:
-                print(f"Error processing {filename}: {e}")
-                failed_files.append(filename)
+            subprocess.Popen(["python3", "delete.py", file_path]) 
+ 
+       
 
         cursor.close()
         conn.close()
@@ -3981,7 +3948,7 @@ def index():
                         f'</span></li>'
                     )
             for fname in failed_files:
-                result_html += f'<li style="display:flex;align-items:center;gap:18px;width:100%;"><span class="fail" style="font-size:1.13em;">{fname} failed to extract</span></li>'
+                result_html += f'<li style="display:flex;align-items:center;gap:18px;width:100%;"><span class="fail" style="font-size:1.13em;">{fname}</span></li>'
             result_html += '''
                     </ul>
                     <a href="/" style="display:inline-block;margin-top:20px;color:#fff;background:#1e40af;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:500;">Back to Upload</a>

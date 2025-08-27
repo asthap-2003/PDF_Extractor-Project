@@ -9,14 +9,11 @@ from mysql.connector import Error
 import uuid
 from datetime import datetime
 import shutil
+import sys
 
 # -------------------- Linux Server Config --------------------
 
-# Linux ma tesseract system PATH ma hoy to path set karvani jaroor nathi.
-# Pan jo jaroor hoy to generally /usr/bin/tesseract hoy chhe:
 pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
-
-# Poppler binaries Linux ma install thay chhe /usr/bin andar (pdftoppm, pdftocairo etc.)
 POPPLER_PATH = r"/usr/bin"
 
 # -------------------- Database Config --------------------
@@ -387,6 +384,29 @@ def process_unprocessed_pdfs():
 
 # Main execution
 if __name__ == "__main__":
-    print("🔄 Starting PDF processing from unprocessed_pdfs folder...")
-    process_unprocessed_pdfs()
-    print("✅ Processing complete!")
+    if len(sys.argv) > 1:
+        pdf_path = sys.argv[1]
+        print(f"🔄 Processing single PDF: {pdf_path}")
+        try:
+            # Generate unique contract ID
+            contract_id = str(uuid.uuid4())
+            organisation_data, buyer_data, seller_data = extract_details_with_pdfplumber(pdf_path)
+            products_list, total_order_value = extract_product_details_ocr(pdf_path)
+            complete_text = extract_complete_pdf_text(pdf_path)
+            save_success = save_to_database(contract_id, os.path.basename(pdf_path), organisation_data, buyer_data, seller_data, products_list, total_order_value, complete_text)
+            if save_success:
+                print(f"✅ Successfully processed: {os.path.basename(pdf_path)}")
+                # Move file to uploaded_pdfs folder
+                uploaded_folder = "uploaded_pdfs"
+                os.makedirs(uploaded_folder, exist_ok=True)
+                uploaded_file_path = os.path.join(uploaded_folder, os.path.basename(pdf_path))
+                shutil.move(pdf_path, uploaded_file_path)
+                print(f"📁 Moved {os.path.basename(pdf_path)} to uploaded_pdfs folder")
+            else:
+                print(f"❌ Failed to process: {os.path.basename(pdf_path)}")
+        except Exception as e:
+            print(f"❌ Error processing {os.path.basename(pdf_path)}: {e}")
+    else:
+        print("🔄 Starting PDF processing from unprocessed_pdfs folder...")
+        process_unprocessed_pdfs()
+        print("✅ Processing complete!")
