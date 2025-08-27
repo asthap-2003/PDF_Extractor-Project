@@ -1,4 +1,5 @@
-from flask import Flask, request, render_template_string, send_file, redirect, jsonify, session, render_template, url_for
+from flask import Flask, request, render_template_string, send_file, redirect, jsonify
+from functools import wraps
 import json
 import os
 import re
@@ -18,59 +19,23 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 import io
+import subprocess
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.secret_key = 'replace-this-with-a-strong-secret-key'
-
-# Simple auth guard to protect all routes except login and static assets
-@app.before_request
-def require_login():
-    # Allow login page and static files without authentication
-    allowed_endpoints = {'login', 'static'}
-    if request.endpoint in allowed_endpoints:
-        return None
-    # Some endpoints can be None (e.g., 404); in that case, enforce login as well
-    if not session.get('logged_in'):
-        next_url = request.url
-        return redirect(url_for('login', next=next_url))
+    
+app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
 
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    # Static credentials
-    valid_username = 'yiion308'
-    valid_password = 'Yiion@308'
+pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
+POPPLER_PATH = r"/usr/bin"
 
-    if request.method == 'POST':
-        username = request.form.get('username', '')
-        password = request.form.get('password', '')
-        if username == valid_username and password == valid_password:
-            session['logged_in'] = True
-            next_url = request.args.get('next')
-            return redirect(next_url or url_for('contracts_list'))
-        else:
-            return render_template('login.html', error='Invalid credentials')
-
-    # GET
-    return render_template('login.html')
-
-
-@app.route('/logout')
-def logout():
-    session.pop('logged_in', None)
-    return redirect(url_for('login'))
-
-# Configure paths for your environment
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-POPPLER_PATH = r"C:\Users\Yiion-35\AppData\Local\Microsoft\WinGet\Packages\oschwartz10612.Poppler_Microsoft.Winget.Source_8wekyb3d8bbwe\poppler-24.08.0\Library\bin"
 
 # MySQL Database Configuration
 db_config = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'root',  # Same as in setup_database.py
-    'database': 'contract_data'
+     'host': 'localhost',
+    'user': 'gem',
+    'password': 'Y!!0n1z3#',  # Same as in setup_database.py
+    'database': 'gem'
 }
 
 def generate_pdf_report(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value):
@@ -408,15 +373,19 @@ def view_original_pdf(contract_id):
             return "Contract not found", 404
         
         filename = contract.get("filename")
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        # Check uploads folder first
+        file_path = os.path.join('unprocessed_pdfs', filename)
+        # If not found, check uploaded_pdfs folder
+        if not os.path.exists(file_path):
+            file_path = os.path.join('uploaded_pdfs', filename)
+            if not os.path.exists(file_path):
+                cursor.close()
+                conn.close()
+                return "Original PDF file not found", 404
         
         # Close database connection
         cursor.close()
         conn.close()
-        
-        # Check if file exists
-        if not os.path.exists(file_path):
-            return "Original PDF file not found", 404
         
         # Return the original PDF file for viewing
         return send_file(
@@ -429,21 +398,193 @@ def view_original_pdf(contract_id):
         print(f"Error viewing original PDF: {e}")
         return f"Error viewing original PDF: {str(e)}", 500
 
+def paginate(records, page_size=10):
+    """Simple pagination function as provided by user"""
+    total_records = len(records)
+    total_pages = (total_records + page_size - 1) // page_size  # ceil division
+    current_page = 1
+
+    while True:
+        start = (current_page - 1) * page_size
+        end = start + page_size
+        page_items = records[start:end]
+        
+        print(f"\nPage {current_page}/{total_pages}")
+        for i, item in enumerate(page_items, start=1):
+            print(f"{start + i}. {item}")
+
+        print("\nCommands: [n]ext, [p]rev, [f]irst, [l]ast, [q]uit")
+        cmd = input("Enter command: ").strip().lower()
+        if cmd == 'n' and current_page < total_pages:
+            current_page += 1
+        elif cmd == 'p' and current_page > 1:
+            current_page -= 1
+        elif cmd == 'f':
+            current_page = 1
+        elif cmd == 'l':
+            current_page = total_pages
+        elif cmd == 'q':
+            break
+        else:
+            print("Invalid command or no more pages.")
+
+class Paginator:
+    """Custom pagination class for handling pagination logic"""
+    def __init__(self, items, page_size=10):
+        self.items = items
+        self.page_size = page_size
+        self.total_records = len(items)
+        self.total_pages = (self.total_records + page_size - 1) // page_size
+
+    def get_page(self, page):
+        """Get items for specific page"""
+        if page < 1 or page > self.total_pages:
+            return []
+        start = (page - 1) * self.page_size
+        end = start + self.page_size
+        return self.items[start:end]
+
+    def get_pagination_info(self, current_page):
+        """Get pagination information"""
+        return {
+            'current_page': current_page,
+            'total_pages': self.total_pages,
+            'total_records': self.total_records,
+            'has_prev': current_page > 1,
+            'has_next': current_page < self.total_pages,
+            'start_record': (current_page - 1) * self.page_size + 1,
+            'end_record': min(current_page * self.page_size, self.total_records)
+        }
+
+def generate_pagination_html(current_page, total_pages, base_url="?", per_page=5, total_records=0, available_sizes=[5, 10, 50, 100]):
+    """Generate pagination HTML controls with attractive design and page size selector"""
+    # Always show the pagination bar, even if only one page
+    # (User wants to see the bar for navigation/page size change)
+    
+    # Calculate record range
+    start_record = (current_page - 1) * per_page + 1
+    end_record = min(current_page * per_page, total_records)
+    
+    html = f'''
+    <div class="pagination-container">
+        <div class="pagination-info">
+            <span class="pagination-summary">
+                <i class="fas fa-info-circle"></i>
+                Showing {start_record} to {end_record} of {total_records} records
+            </span>
+            <span class="pagination-pages">
+                Page {current_page} of {total_pages}
+            </span>
+        </div>
+        
+        <div class="pagination-controls">
+    '''
+    
+    # First button
+    if current_page > 1:
+        html += f'<a href="{base_url}page=1&per_page={per_page}" class="pagination-btn" title="First Page"><i class="fas fa-angle-double-left"></i></a>'
+    else:
+        html += '<span class="pagination-btn disabled" title="First Page"><i class="fas fa-angle-double-left"></i></span>'
+
+    # Previous button
+    if current_page > 1:
+        html += f'<a href="{base_url}page={current_page - 1}&per_page={per_page}" class="pagination-btn" title="Previous Page"><i class="fas fa-chevron-left"></i></a>'
+    else:
+        html += '<span class="pagination-btn disabled" title="Previous Page"><i class="fas fa-chevron-left"></i></span>'
+
+    # Page numbers (show max 5 pages)
+    start_page = max(1, current_page - 2)
+    end_page = min(total_pages, current_page + 2)
+
+    # Show first page if not in range
+    if start_page > 1:
+        html += f'<a href="{base_url}page=1&per_page={per_page}" class="pagination-btn">1</a>'
+        if start_page > 2:
+            html += '<span class="pagination-ellipsis">...</span>'
+
+    # Show page numbers
+    for page_num in range(start_page, end_page + 1):
+        if page_num == current_page:
+            html += f'<span class="pagination-btn active">{page_num}</span>'
+        else:
+            html += f'<a href="{base_url}page={page_num}&per_page={per_page}" class="pagination-btn">{page_num}</a>'
+
+    # Show last page if not in range
+    if end_page < total_pages:
+        if end_page < total_pages - 1:
+            html += '<span class="pagination-ellipsis">...</span>'
+        html += f'<a href="{base_url}page={total_pages}&per_page={per_page}" class="pagination-btn">{total_pages}</a>'
+
+    # Next button
+    if current_page < total_pages:
+        html += f'<a href="{base_url}page={current_page + 1}&per_page={per_page}" class="pagination-btn" title="Next Page"><i class="fas fa-chevron-right"></i></a>'
+    else:
+        html += '<span class="pagination-btn disabled" title="Next Page"><i class="fas fa-chevron-right"></i></span>'
+
+    # Last button
+    if current_page < total_pages:
+        html += f'<a href="{base_url}page={total_pages}&per_page={per_page}" class="pagination-btn" title="Last Page"><i class="fas fa-angle-double-right"></i></a>'
+    else:
+        html += '<span class="pagination-btn disabled" title="Last Page"><i class="fas fa-angle-double-right"></i></span>'
+
+    html += '</div>'
+
+    # Add page size selector with JS to preserve page and per_page
+    html += f'''
+    <div class="pagination-options">
+        <div class="page-size-selector">
+            <label for="pageSize">Show:</label>
+            <select id="pageSize" onchange="changePageSize(this.value)">
+    '''
+
+    for size in available_sizes:
+        selected = "selected" if size == per_page else ""
+        html += f'<option value="{size}" {selected}>{size}</option>'
+
+    html += '''
+            </select>
+            <span>per page</span>
+        </div>
+    </div>
+    <script>
+    function changePageSize(size) {
+        // Always go to page 1 when changing page size
+        const params = new URLSearchParams(window.location.search);
+        params.set('per_page', size);
+        params.set('page', 1);
+        window.location.search = params.toString();
+    }
+    </script>
+    </div>
+    '''
+
+    return html
+
 @app.route('/contracts')
 def contracts_list():
-    """Display all extracted contracts in a table format"""
+    """Display all extracted contracts in a table format with custom pagination"""
     try:
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 5, type=int)  # Default to 5 records per page
+        
+        # Validate page size
+        available_sizes = [5, 10, 50, 100]
+        if per_page not in available_sizes:
+            per_page = 5
+        
         # Connect to database
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor(dictionary=True)
         
-        # Get all contracts with their details
+        # Get all contracts first (for pagination)
         cursor.execute("""
             SELECT 
                 c.contract_id,
                 c.filename,
                 c.upload_time,
                 c.total_order_value,
+                c.text_format,
                 o.type,
                 o.ministry,
                 o.department,
@@ -465,10 +606,46 @@ def contracts_list():
             LEFT JOIN organisations o ON c.contract_id = o.contract_id
             LEFT JOIN sellers s ON c.contract_id = s.contract_id
             LEFT JOIN buyers b ON c.contract_id = b.contract_id
-            ORDER BY c.upload_time DESC
+            ORDER BY c.upload_time DESC, c.contract_id DESC
         """)
         
-        contracts = cursor.fetchall()
+        all_contracts = cursor.fetchall()
+        
+        # Now get product names separately to avoid GROUP BY issues
+        for contract in all_contracts:
+            cursor.execute("""
+                SELECT GROUP_CONCAT(product_name SEPARATOR ', ') as product_names
+                FROM products 
+                WHERE contract_id = %s
+            """, (contract['contract_id'],))
+            product_result = cursor.fetchone()
+            contract['product_names'] = product_result['product_names'] if product_result else None
+        
+        # Use custom pagination class
+        paginator = Paginator(all_contracts, per_page)
+        contracts = paginator.get_page(page)
+        pagination_info = paginator.get_pagination_info(page)
+        
+        # Generate pagination HTML with page size selector
+        pagination_html = generate_pagination_html(
+            current_page=page,
+            total_pages=paginator.total_pages,
+            base_url="?",
+            per_page=per_page,
+            total_records=paginator.total_records,
+            available_sizes=available_sizes
+        )
+        
+        # Debug: Show order of records (most recent first)
+        if contracts:
+            print(f"Total records: {len(contracts)}")
+            print("Records ordered by upload time (newest first):")
+            for i, contract in enumerate(contracts[:3], 1):  # Show first 3 records
+                print(f"{i}. {contract['filename']} - {contract['upload_time']}")
+                if contract.get('product_names'):
+                    print(f"   Products: {contract['product_names']}")
+                else:
+                    print(f"   Products: None")
         
         # Close database connection
         cursor.close()
@@ -869,7 +1046,7 @@ def contracts_list():
                     100% { transform: rotate(360deg); }
                 }
 
-                @media (max-width: 768px) {
+                @med]ia (max-width: 768px) {
                     .container {
                         padding: 1rem;
                     }
@@ -895,6 +1072,512 @@ def contracts_list():
                     .btn-sm {
                         font-size: 0.7rem;
                         padding: 0.375rem 0.5rem;
+                    }
+                    
+                    /* Ultra Modern Attractive Pagination Styles */
+                    .pagination-container {
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        border-radius: 25px;
+                        padding: 3rem;
+                        margin: 3rem 0;
+                        box-shadow: 
+                            0 25px 50px rgba(0, 0, 0, 0.15), 
+                            0 15px 35px rgba(102, 126, 234, 0.2),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                        border: 2px solid rgba(255, 255, 255, 0.1);
+                        position: relative;
+                        overflow: hidden;
+                        backdrop-filter: blur(20px);
+                        animation: paginationGlow 4s ease-in-out infinite;
+                    }
+
+                    @keyframes paginationGlow {
+                        0%, 100% { 
+                            box-shadow: 
+                                0 25px 50px rgba(0, 0, 0, 0.15), 
+                                0 15px 35px rgba(102, 126, 234, 0.2),
+                                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                        }
+                        50% { 
+                            box-shadow: 
+                                0 30px 60px rgba(0, 0, 0, 0.2), 
+                                0 20px 40px rgba(102, 126, 234, 0.3),
+                                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+                        }
+                    }
+
+                    .pagination-container::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        height: 4px;
+                        background: linear-gradient(90deg, #2563eb, #059669, #d97706, #dc2626);
+                        background-size: 200% 100%;
+                        animation: gradientShift 3s ease-in-out infinite;
+                    }
+
+                    @keyframes gradientShift {
+                        0%, 100% { background-position: 0% 50%; }
+                        50% { background-position: 100% 50%; }
+                    }
+                    
+                    .pagination-info {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        flex-wrap: wrap;
+                        gap: 1.5rem;
+                        margin-bottom: 2.5rem;
+                        padding: 2rem;
+                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+                        border-radius: 20px;
+                        border: 2px solid rgba(255, 255, 255, 0.3);
+                        backdrop-filter: blur(20px);
+                        box-shadow: 
+                            0 15px 35px rgba(0, 0, 0, 0.1),
+                            0 8px 25px rgba(102, 126, 234, 0.15);
+                        position: relative;
+                        overflow: hidden;
+                    }
+
+                    .pagination-summary {
+                        color: #667eea;
+                        font-weight: 800;
+                        font-size: 1.1rem;
+                        display: flex;
+                        align-items: center;
+                        gap: 1rem;
+                        background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+                        padding: 1rem 1.5rem;
+                        border-radius: 15px;
+                        border: 2px solid rgba(102, 126, 234, 0.3);
+                        box-shadow: 
+                            0 8px 25px rgba(102, 126, 234, 0.2),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+                        position: relative;
+                        overflow: hidden;
+                        backdrop-filter: blur(10px);
+                    }
+
+                    .pagination-summary i {
+                        color: #667eea;
+                        font-size: 1.3rem;
+                        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    }
+
+                    .pagination-pages {
+                        color: #667eea;
+                        font-weight: 900;
+                        font-size: 1.2rem;
+                        background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+                        padding: 1rem 2rem;
+                        border-radius: 15px;
+                        border: 2px solid rgba(102, 126, 234, 0.4);
+                        box-shadow: 
+                            0 10px 30px rgba(102, 126, 234, 0.3),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.4);
+                        position: relative;
+                        overflow: hidden;
+                        backdrop-filter: blur(10px);
+                        animation: pageGlow 3s ease-in-out infinite;
+                    }
+                    
+                    @keyframes pageGlow {
+                        0%, 100% { 
+                            box-shadow: 
+                                0 10px 30px rgba(102, 126, 234, 0.3),
+                                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+                        }
+                        50% { 
+                            box-shadow: 
+                                0 15px 40px rgba(102, 126, 234, 0.4),
+                                inset 0 1px 0 rgba(255, 255, 255, 0.5);
+                        }
+                    }
+
+                    .pagination-pages::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: -100%;
+                        width: 100%;
+                        height: 100%;
+                        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+                        transition: left 0.6s;
+                    }
+
+                    .pagination-pages:hover::before {
+                        left: 100%;
+                    }
+                    
+                    .pagination-controls {
+                        display: flex;
+                        gap: 1rem;
+                        align-items: center;
+                        justify-content: center;
+                        flex-wrap: wrap;
+                        padding: 2.5rem;
+                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+                        border-radius: 22px;
+                        box-shadow: 
+                            0 20px 40px rgba(0, 0, 0, 0.15), 
+                            0 10px 30px rgba(102, 126, 234, 0.2);
+                        border: 2px solid rgba(255, 255, 255, 0.3);
+                        backdrop-filter: blur(20px);
+                        position: relative;
+                        overflow: hidden;
+                        animation: controlsFloat 6s ease-in-out infinite;
+                    }
+                    
+                    @keyframes controlsFloat {
+                        0%, 100% { transform: translateY(0px); }
+                        50% { transform: translateY(-5px); }
+                    }
+
+                    .pagination-controls::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        height: 2px;
+                        background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+                    }
+                    
+                    .pagination-btn {
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 1.25rem 1.75rem;
+                        border: 2px solid rgba(255, 255, 255, 0.3);
+                        background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+                        color: #667eea;
+                        text-decoration: none;
+                        border-radius: 15px;
+                        font-size: 1rem;
+                        font-weight: 800;
+                        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                        min-width: 4rem;
+                        box-shadow: 
+                            0 8px 25px rgba(0, 0, 0, 0.15),
+                            0 4px 15px rgba(102, 126, 234, 0.2);
+                        margin: 0 0.4rem;
+                        position: relative;
+                        overflow: hidden;
+                        backdrop-filter: blur(10px);
+                        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+                    }
+
+                    .pagination-btn::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: -100%;
+                        width: 100%;
+                        height: 100%;
+                        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+                        transition: left 0.6s ease-in-out;
+                    }
+
+                    .pagination-btn:hover::before {
+                        left: 100%;
+                    }
+
+                    .pagination-btn:hover {
+                        background: linear-gradient(145deg, #667eea, #764ba2);
+                        color: white;
+                        border-color: rgba(255, 255, 255, 0.5);
+                        transform: translateY(-5px) scale(1.08);
+                        box-shadow: 
+                            0 15px 35px rgba(0, 0, 0, 0.2),
+                            0 8px 25px rgba(102, 126, 234, 0.4),
+                            0 0 0 0 rgba(102, 126, 234, 0.7);
+                        animation: buttonPulse 0.6s ease-out;
+                    }
+                    
+                    @keyframes buttonPulse {
+                        0% { transform: translateY(-5px) scale(1.08); }
+                        50% { transform: translateY(-7px) scale(1.12); }
+                        100% { transform: translateY(-5px) scale(1.08); }
+                    }
+                    
+                    .pagination-btn.active {
+                        background: linear-gradient(145deg, #667eea, #764ba2);
+                        color: white;
+                        border-color: rgba(255, 255, 255, 0.6);
+                        box-shadow: 
+                            0 12px 30px rgba(0, 0, 0, 0.25),
+                            0 6px 20px rgba(102, 126, 234, 0.5);
+                        transform: translateY(-3px) scale(1.06);
+                        position: relative;
+                        animation: activeGlow 2s ease-in-out infinite;
+                    }
+                    
+                    @keyframes activeGlow {
+                        0%, 100% { 
+                            box-shadow: 
+                                0 12px 30px rgba(0, 0, 0, 0.25),
+                                0 6px 20px rgba(102, 126, 234, 0.5);
+                        }
+                        50% { 
+                            box-shadow: 
+                                0 15px 35px rgba(0, 0, 0, 0.3),
+                                0 8px 25px rgba(102, 126, 234, 0.6);
+                        }
+                    }
+
+                    .pagination-btn.active::after {
+                        content: '';
+                        position: absolute;
+                        bottom: -4px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        width: 0;
+                        height: 0;
+                        border-left: 8px solid transparent;
+                        border-right: 8px solid transparent;
+                        border-top: 8px solid var(--primary-color);
+                        filter: drop-shadow(0 2px 4px rgba(37, 99, 235, 0.3));
+                    }
+                    
+                    .pagination-btn.disabled {
+                        opacity: 0.4;
+                        cursor: not-allowed;
+                        border-color: var(--border-color);
+                        color: var(--text-muted);
+                        background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                    }
+                    
+                    .pagination-btn.disabled:hover {
+                        background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
+                        color: var(--text-muted);
+                        border-color: var(--border-color);
+                        transform: none;
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                    }
+                    
+                    .pagination-ellipsis {
+                        padding: 1rem 1rem;
+                        color: var(--text-secondary);
+                        font-weight: 700;
+                        font-size: 1rem;
+                        background: rgba(255, 255, 255, 0.8);
+                        border-radius: 10px;
+                        border: 1px solid rgba(37, 99, 235, 0.1);
+                    }
+                    
+                    .pagination-options {
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        padding: 2.5rem;
+                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+                        border-radius: 22px;
+                        border: 2px solid rgba(255, 255, 255, 0.3);
+                        margin-top: 2rem;
+                        box-shadow: 
+                            0 15px 35px rgba(0, 0, 0, 0.1),
+                            0 8px 25px rgba(102, 126, 234, 0.15);
+                        backdrop-filter: blur(20px);
+                        position: relative;
+                        overflow: hidden;
+                        animation: optionsFloat 8s ease-in-out infinite;
+                    }
+                    
+                    @keyframes optionsFloat {
+                        0%, 100% { transform: translateY(0px); }
+                        50% { transform: translateY(-3px); }
+                    }
+                    
+                    /* Responsive Design for Pagination */
+                    @media (max-width: 768px) {
+                        .pagination-container {
+                            padding: 2rem 1.5rem;
+                            margin: 2rem 0;
+                            border-radius: 20px;
+                        }
+                        
+                        .pagination-info {
+                            flex-direction: column;
+                            gap: 1rem;
+                            padding: 1.5rem;
+                            text-align: center;
+                        }
+                        
+                        .pagination-summary,
+                        .pagination-pages {
+                            font-size: 0.9rem;
+                            padding: 0.75rem 1rem;
+                        }
+                        
+                        .pagination-controls {
+                            padding: 1.5rem;
+                            gap: 0.5rem;
+                        }
+                        
+                        .pagination-btn {
+                            padding: 0.75rem 1rem;
+                            font-size: 0.9rem;
+                            min-width: 3rem;
+                            margin: 0 0.2rem;
+                        }
+                        
+                        .pagination-options {
+                            padding: 1.5rem;
+                        }
+                        
+                        .page-size-selector {
+                            flex-direction: column;
+                            gap: 1rem;
+                            text-align: center;
+                            padding: 1rem 1.5rem;
+                        }
+                        
+                        .page-size-selector select {
+                            padding: 0.75rem 1rem;
+                            font-size: 0.9rem;
+                            min-width: 80px;
+                        }
+                    }
+                    
+                    @media (max-width: 480px) {
+                        .pagination-container {
+                            padding: 1.5rem 1rem;
+                            margin: 1.5rem 0;
+                        }
+                        
+                        .pagination-controls {
+                            padding: 1rem;
+                            gap: 0.3rem;
+                        }
+                        
+                        .pagination-btn {
+                            padding: 0.5rem 0.75rem;
+                            font-size: 0.8rem;
+                            min-width: 2.5rem;
+                            margin: 0 0.1rem;
+                        }
+                        
+                        .pagination-summary,
+                        .pagination-pages {
+                            font-size: 0.8rem;
+                            padding: 0.5rem 0.75rem;
+                        }
+                    }
+                    
+                    .page-size-selector {
+                        display: flex;
+                        align-items: center;
+                        gap: 1.5rem;
+                        font-size: 1.1rem;
+                        color: #667eea;
+                        font-weight: 800;
+                        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+                        padding: 1.5rem 2rem;
+                        border-radius: 18px;
+                        border: 2px solid rgba(102, 126, 234, 0.3);
+                        box-shadow: 
+                            0 10px 30px rgba(102, 126, 234, 0.2),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+                        backdrop-filter: blur(10px);
+                        position: relative;
+                        overflow: hidden;
+                    }
+                    
+                    .page-size-selector select {
+                        padding: 1rem 1.5rem;
+                        border: 2px solid rgba(102, 126, 234, 0.4);
+                        border-radius: 15px;
+                        background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+                        color: #667eea;
+                        font-size: 1rem;
+                        cursor: pointer;
+                        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                        font-weight: 800;
+                        min-width: 100px;
+                        box-shadow: 
+                            0 8px 25px rgba(102, 126, 234, 0.2),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+                        backdrop-filter: blur(10px);
+                    }
+                    
+                    .page-size-selector select:focus {
+                        outline: none;
+                        border-color: #667eea;
+                        box-shadow: 
+                            0 0 0 4px rgba(102, 126, 234, 0.2), 
+                            0 12px 35px rgba(102, 126, 234, 0.3);
+                        transform: translateY(-3px) scale(1.02);
+                    }
+                    
+                    .page-size-selector select:hover {
+                        border-color: #667eea;
+                        box-shadow: 
+                            0 10px 30px rgba(102, 126, 234, 0.3),
+                            0 0 0 0 rgba(102, 126, 234, 0.5);
+                        transform: translateY(-2px) scale(1.01);
+                        animation: selectPulse 0.4s ease-out;
+                    }
+                    
+                    @keyframes selectPulse {
+                        0% { transform: translateY(-2px) scale(1.01); }
+                        50% { transform: translateY(-4px) scale(1.03); }
+                        100% { transform: translateY(-2px) scale(1.01); }
+                    }
+                        box-shadow: var(--shadow-sm);
+                    }
+                    
+                    .pagination-ellipsis {
+                        padding: 0.875rem 0.75rem;
+                        color: var(--text-secondary);
+                        font-weight: 600;
+                        font-size: 0.875rem;
+                    }
+                    
+                    .pagination-options {
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        padding: 1.5rem;
+                        background: rgba(255, 255, 255, 0.8);
+                        border-radius: var(--radius-lg);
+                        border: 1px solid var(--border-color);
+                        margin-top: 1rem;
+                    }
+                    
+                    .page-size-selector {
+                        display: flex;
+                        align-items: center;
+                        gap: 0.75rem;
+                        font-size: 0.875rem;
+                        color: var(--text-secondary);
+                        font-weight: 500;
+                    }
+                    
+                    .page-size-selector select {
+                        padding: 0.75rem 1rem;
+                        border: 2px solid var(--border-color);
+                        border-radius: var(--radius-md);
+                        background: var(--surface-color);
+                        color: var(--text-primary);
+                        font-size: 0.875rem;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        font-weight: 600;
+                        min-width: 80px;
+                    }
+                    
+                    .page-size-selector select:focus {
+                        outline: none;
+                        border-color: var(--primary-color);
+                        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+                    }
+                    
+                    .page-size-selector select:hover {
+                        border-color: var(--primary-light);
                     }
                 }
             </style>
@@ -923,6 +1606,7 @@ def contracts_list():
                     <table>
                         <thead>
                             <tr>
+                                <th>ID</th>
                                 <th>Organization Details</th>
                                 <th>Seller Details</th>
                                 <th>Buyer Details</th>
@@ -935,8 +1619,12 @@ def contracts_list():
         
         if contracts:
             for i, contract in enumerate(contracts, 1):
+                serial_number = (page - 1) * per_page + i
                 html += f'''
                         <tr>
+                            <td style="text-align: center; font-weight: bold;">
+                                <div style="font-size: 1.1em; color: #495057;">{serial_number}</div>
+                            </td>
                             <td>
                                 <div class="data-section">
                                     <div class="section-title">
@@ -1055,12 +1743,23 @@ def contracts_list():
         
         html += '''
                     </tbody>
-                </table>
-            </div>
-            
-            <script>
+                            </table>
+        </div>
+        
+        <!-- Attractive Pagination -->
+        ''' + pagination_html + '''
+        
+        <script>
                 // Store contracts data for search
                 const allContracts = ''' + json.dumps(contracts_for_json) + ''';
+                
+                // Page size change function
+                function changePageSize(newSize) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    urlParams.set('per_page', newSize);
+                    urlParams.delete('page'); // Reset to first page when changing page size
+                    window.location.href = window.location.pathname + '?' + urlParams.toString();
+                }
                 
                 // DOM elements
                 const searchInput = document.getElementById('searchInput');
@@ -1113,6 +1812,12 @@ def contracts_list():
                             if (contract.buyer_gstin && contract.buyer_gstin.toLowerCase().includes(searchTerm)) return true;
                             if (contract.buyer_address && contract.buyer_address.toLowerCase().includes(searchTerm)) return true;
                             
+                            // Search in product names
+                            if (contract.product_names && contract.product_names.toLowerCase().includes(searchTerm)) return true;
+                            
+                            // Search in text_format (complete PDF text)
+                            if (contract.text_format && contract.text_format.toLowerCase().includes(searchTerm)) return true;
+                            
                             return false;
                         });
                         
@@ -1124,7 +1829,7 @@ def contracts_list():
                     if (contracts.length === 0) {
                         tableBody.innerHTML = `
                             <tr>
-                                <td colspan="5">
+                                <td colspan="6">
                                     <div class="empty-state">
                                         <i class="fas fa-search"></i>
                                         <h3>No contracts found</h3>
@@ -1138,8 +1843,11 @@ def contracts_list():
                     let html = '';
                     contracts.forEach((contract, index) => {
                         html += `
-                                                                                            <tr>
-                                    <td>
+                            <tr>
+                                <td style="text-align: center; font-weight: bold;">
+                                    <div style="font-size: 1.1em; color: #495057;">${index + 1}</div>
+                                </td>
+                                <td>
                                         <div class="data-section">
                                             <div class="section-title">
                                                 <i class="fas fa-building"></i> Organization
@@ -2715,7 +3423,7 @@ def get_products(contract_id):
             "error": str(e)
         }), 500
 
-def save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value):
+def save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, text_format):
     """Save extracted data to MySQL database"""
     conn = None  # Initialize conn to None
     cursor = None  # Initialize cursor to None
@@ -2725,9 +3433,9 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
         
         # Insert into contracts table
         cursor.execute("""
-        INSERT INTO contracts (contract_id, filename, upload_time, total_order_value)
-        VALUES (%s, %s, %s, %s)
-        """, (contract_id, filename, datetime.now(), total_order_value))
+        INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format)
+        VALUES (%s, %s, %s, %s, %s)
+        """, (contract_id, filename, datetime.now(), total_order_value, text_format))
         
         # Insert into organisations table
         cursor.execute("""
@@ -2888,9 +3596,43 @@ def extract_text_from_pdf_ocr(pdf_path):
     images = convert_from_path(pdf_path, dpi=300, poppler_path=POPPLER_PATH)
     full_text = ""
     for img in images:
-        text = pytesseract.image_to_string(img, lang='eng+hin')
+        text = pytesseract.image_to_string(img, lang='eng')
         full_text += text + "\n"
     return full_text
+
+def extract_complete_pdf_text(pdf_path):
+    """Extract complete text from PDF using both pdfplumber and OCR for maximum coverage"""
+    complete_text = ""
+    
+    # First try pdfplumber for text extraction - get ALL text from ALL pages
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            print(f"  Extracting text from {len(pdf.pages)} pages using pdfplumber...")
+            for page_num, page in enumerate(pdf.pages, 1):
+                text = page.extract_text()
+                if text:
+                    complete_text += f"\n--- Page {page_num} ---\n"
+                    complete_text += text + "\n"
+                    print(f"    Page {page_num}: {len(text)} characters extracted")
+    except Exception as e:
+        print(f"Error extracting text with pdfplumber: {e}")
+    
+    # Always use OCR to get complete PDF text, regardless of pdfplumber result
+    try:
+        print(f"  Extracting text using OCR...")
+        ocr_text = extract_text_from_pdf_ocr(pdf_path)
+        # Combine both results for maximum coverage
+        complete_text += "\n" + ocr_text
+    except Exception as e:
+        print(f"Error extracting text with OCR: {e}")
+        complete_text += f"\n[OCR Error: {e}]"
+    
+    # Ensure we always return some text
+    if not complete_text.strip():
+        complete_text = f"[No text extracted from {os.path.basename(pdf_path)}]"
+    
+    print(f"  Total extracted text length: {len(complete_text)} characters")
+    return complete_text.strip()
 
 def get_value(lines, key):
     for line in lines:
@@ -2962,44 +3704,264 @@ def extract_product_details_ocr(pdf_path):
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        file = request.files['pdf']
-        filename = secure_filename(file.filename)
+        files = request.files.getlist('pdf')
+        
+        if not files or all(file.filename == '' for file in files):
+            return "No files selected", 400
         
         # Create upload folder if it doesn't exist
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-        
-        # Save to temporary upload folder first
-        temp_file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(temp_file_path)
-        
-        # Define your permanent storage folder
-        permanent_folder = "C:/Users/Yiion-35/OneDrive/Desktop/gem.gov.in/uploaded_pdfs"
-        os.makedirs(permanent_folder, exist_ok=True)
-        
-        # Copy file to your permanent folder
-        permanent_file_path = os.path.join(permanent_folder, filename)
-        import shutil
-        shutil.copy2(temp_file_path, permanent_file_path)
-        
-        # Delete file from temporary upload folder
-        os.remove(temp_file_path)
-        
-        # Generate unique contract ID
-        contract_id = str(uuid.uuid4())
-        
-        # Extract using pdfplumber (organisation, buyer, seller)
-        organisation_data, buyer_data, seller_data = extract_details_with_pdfplumber(permanent_file_path)
-        # Extract product details separately using OCR
-        products_list, total_order_value = extract_product_details_ocr(permanent_file_path)
-        
-        # Save to database
-        save_success = save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value)
-        
-        # Redirect to contracts list page instead of showing individual result
-        if save_success:
-            return redirect('/contracts')
+
+   
+
+        # Connect to database once for all checks
+        # conn = mysql.connector.connect(**db_config)
+        # cursor = conn.cursor(dictionary=True, buffered=True)
+
+        for file in files:
+            if file.filename == '':
+                continue
+
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+            subprocess.Popen(["python3", "delete.py", file_path]) 
+ 
+       
+
+        # cursor.close()
+        # conn.close()
+
+        # Show upload result with red error for duplicates
+        if processed_files or duplicate_files or failed_files:
+            # Build HTML result
+            result_html = '''
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Upload Result</title>
+                <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+                <style>
+                    body {
+                        font-family: 'Inter', Arial, sans-serif;
+                        background: #f8fafc;
+                        color: #1e293b;
+                        min-height: 100vh;
+                        background-image: url('https://www.transparenttextures.com/patterns/cubes.png'), linear-gradient(120deg, #fbbf24 0%, #1e40af 100%);
+                        background-blend-mode: lighten;
+                    }
+                    .result-list {
+                        width: 90vw;
+                        max-width: 900px;
+                        margin: 64px auto;
+                        background: #fff;
+                        border-radius: 10px;
+                        box-shadow: none;
+                        padding: 44px 40px 32px 40px;
+                        border: 1.5px solid #e2e8f0;
+                        position: relative;
+                        overflow: visible;
+                        z-index: 1;
+                        animation: none;
+                    }
+                    .result-list::before {
+                        display: none;
+                    }
+                    @keyframes floatCard {
+                        0% { transform: translateY(40px) scale(0.95); opacity: 0; }
+                        80% { transform: translateY(-8px) scale(1.03); opacity: 1; }
+                        100% { transform: translateY(0) scale(1); }
+                    }
+                    @keyframes borderGlow {
+                        0% { opacity: 0.18; filter: blur(8px); }
+                        100% { opacity: 0.32; filter: blur(16px); }
+                    }
+                    .result-list h2 {
+                        margin-bottom: 30px;
+                        color: #1e40af;
+                        font-size: 2.3rem;
+                        font-weight: 900;
+                        letter-spacing: 0.5px;
+                        text-shadow: 0 2px 12px #fbbf2433, 0 1px 0 #fff;
+                        display: flex;
+                        align-items: center;
+                        gap: 14px;
+                    }
+                    .result-list h2 .fa-trophy {
+                        color: #fbbf24;
+                        text-shadow: 0 2px 8px #1e40af44;
+                        font-size: 1.3em;
+                        animation: trophySpin 2.5s infinite linear;
+                    }
+                    @keyframes trophySpin {
+                        0% { transform: rotate(-10deg); }
+                        50% { transform: rotate(10deg); }
+                        100% { transform: rotate(-10deg); }
+                    }
+                    .success {
+                        color: #1e40af;
+                        font-weight: 700;
+                        font-size: 1.13em;
+                        position: relative;
+                        z-index: 2;
+                    }
+                    .success::after {
+                        content: '';
+                        display: inline-block;
+                        width: 18px;
+                        height: 18px;
+                        background: url('https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f389.png') no-repeat center/contain;
+                        margin-left: 7px;
+                        vertical-align: middle;
+                        animation: confettiPop 1.2s cubic-bezier(.68,-0.55,.27,1.55);
+                    }
+                    @keyframes confettiPop {
+                        0% { transform: scale(0.2) translateY(10px); opacity: 0; }
+                        80% { transform: scale(1.2) translateY(-4px); opacity: 1; }
+                        100% { transform: scale(1) translateY(0); }
+                    }
+                    .fail {
+                        color: #f43f5e;
+                        font-weight: 700;
+                        font-size: 1.13em;
+                        position: relative;
+                        z-index: 2;
+                    }
+                    ul {
+                        padding-left: 0;
+                        margin-bottom: 0;
+                        list-style: none;
+                        width: 100%;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 18px;
+                    }
+                    .duplicate-card {
+                        background: #fff;
+                        color: #1e40af;
+                        border-radius: 6px;
+                        padding: 0 18px 0 12px;
+                        width: 320px;
+                        min-width: 320px;
+                        max-width: 320px;
+                        height: 44px;
+                        display: flex;
+                        align-items: center;
+                        font-size: 1.08em;
+                        font-weight: 600;
+                        margin-left: 0;
+                        box-shadow: none;
+                        position: relative;
+                        transition: background 0.18s;
+                        border: 1.2px solid #e2e8f0;
+                        letter-spacing: 0.1px;
+                        justify-content: flex-end;
+                        gap: 10px;
+                    }
+                    .duplicate-card:hover {
+                        background: #f1f5f9;
+                        box-shadow: none;
+                    }
+                    }
+                    }
+                    .duplicate-card::before {
+                        content: '';
+                        position: absolute;
+                        left: 0; top: 0; bottom: 0;
+                        width: 60%;
+                        background: linear-gradient(120deg, #fff8 0%, #fbbf2444 100%);
+                        opacity: 0.18;
+                        z-index: 0;
+                        pointer-events: none;
+                        animation: shimmer 2.2s infinite linear;
+                    }
+                    @keyframes shimmer {
+                        0% { left: -60%; opacity: 0.12; }
+                        50% { left: 60%; opacity: 0.22; }
+                        100% { left: -60%; opacity: 0.12; }
+                    }
+                    @keyframes popIn {
+                        0% { transform: scale(0.7) translateY(20px); opacity: 0; }
+                        80% { transform: scale(1.12) translateY(-4px); opacity: 1; }
+                        100% { transform: scale(1) translateY(0); }
+                    }
+                    .duplicate-card .fa-circle-exclamation {
+                        margin-right: 8px;
+                        font-size: 1.15em;
+                        opacity: 0.97;
+                        color: #1e40af;
+                        background: #f1f5f9;
+                        border-radius: 50%;
+                        padding: 4px;
+                        z-index: 2;
+                    }
+                    .duplicate-card .close-btn {
+                        margin-left: 10px;
+                        background: none;
+                        border: none;
+                        color: #1e40af;
+                        font-size: 1.08em;
+                        cursor: pointer;
+                        transition: color 0.2s, background 0.2s;
+                        border-radius: 50%;
+                        width: 28px;
+                        height: 28px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 0;
+                        box-shadow: none;
+                        z-index: 2;
+                    }
+                    .duplicate-card .close-btn:hover {
+                        color: #fff;
+                        background: #1e40af;
+                        animation: none;
+                    }
+                    .duplicate-card .close-btn:focus {
+                        outline: 2px solid #1e40af;
+                    }
+                    @keyframes bounceClose {
+                        0% { transform: scale(1.22) rotate(12deg); }
+                        50% { transform: scale(1.35) rotate(-8deg); }
+                        100% { transform: scale(1.22) rotate(12deg); }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="result-list">
+                    <h2 style="color:#1e40af;font-weight:900;">Upload Results</h2>
+                    <ul>
+            '''
+            for fname in processed_files:
+                result_html += f'<li style="display:flex;align-items:center;gap:18px;width:100%;"><span class="success" style="font-size:1.13em;">{fname} extracted successfully</span></li>'
+            for fname in duplicate_files:
+                    result_html += (
+                        f'<li style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:18px;">'
+                        f'<span style="font-weight:600;color:#1e40af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100% - 340px);">{fname}</span>'
+                        f'<span class="duplicate-card">'
+                        f'<i class="fa-solid fa-circle-exclamation"></i>'
+                        f'<span style="margin-right:12px;">Already Extracted</span>'
+                        f'<button class="close-btn" title="Remove" onclick="this.closest(\'li\').remove()" style="margin-left:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:none;">'
+                        f'<i class="fa-solid fa-xmark"></i>'
+                        f'</button>'
+                        f'</span></li>'
+                    )
+            for fname in failed_files:
+                result_html += f'<li style="display:flex;align-items:center;gap:18px;width:100%;"><span class="fail" style="font-size:1.13em;">{fname}</span></li>'
+            result_html += '''
+                    </ul>
+                    <a href="/" style="display:inline-block;margin-top:20px;color:#fff;background:#1e40af;padding:10px 22px;border-radius:6px;text-decoration:none;font-weight:500;">Back to Upload</a>
+                </div>
+            </body>
+            </html>
+            '''
+            return result_html
         else:
-            return "Error saving data to database", 500
+            return "Error processing all files", 500
+            
     # GET method: Present upload form
     return '''
     <!DOCTYPE html>
@@ -3171,9 +4133,61 @@ def index():
                 cursor: pointer;
             }
 
-            .submit-btn {
-                background: var(--primary-color);
+            .selected-files {
+                margin-top: 1rem;
+                max-height: 200px;
+                overflow-y: auto;
+                border: 1px solid var(--border-color);
+                border-radius: var(--radius-md);
+                background: var(--surface-color);
+                display: none;
+               margin-bottom: 20px;
+            }
+
+            .file-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0.75rem 1rem;
+                border-bottom: 1px solid var(--border-color);
+                background: var(--background-color);
+            }
+
+            .file-item:last-child {
+                border-bottom: none;
+            }
+
+            .file-name {
+                font-size: 0.875rem;
+                color: var(--text-primary);
+                font-weight: 500;
+                flex: 1;
+                margin-right: 1rem;
+            }
+
+            .remove-file {
+                background: var(--danger-color);
                 color: white;
+                border: none;
+                border-radius: 50%;
+                width: 24px;
+                height: 24px;
+                cursor: pointer;
+                font-size: 0.75rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s ease;
+            }
+
+            .remove-file:hover {
+                background: #b91c1c;
+                transform: scale(1.1);
+            }
+
+            .submit-btn {
+                background: #1e40af !important;
+                color: white !important;
                 padding: 1rem 2rem;
                 border: none;
                 border-radius: var(--radius-md);
@@ -3190,13 +4204,19 @@ def index():
             }
 
             .submit-btn:hover {
-                background: var(--primary-dark);
+                background: #1e3a8a !important;
                 transform: translateY(-1px);
                 box-shadow: var(--shadow-lg);
             }
 
             .submit-btn:active {
                 transform: translateY(0);
+            }
+
+            .submit-btn:disabled {
+                background: var(--text-muted);
+                cursor: not-allowed;
+                transform: none;
             }
 
             .view-contracts {
@@ -3327,6 +4347,16 @@ def index():
                 100% { transform: rotate(360deg); }
             }
 
+            .file-count {
+                background: var(--primary-color);
+                color: white;
+                padding: 0.25rem 0.75rem;
+                border-radius: var(--radius-sm);
+                font-size: 0.75rem;
+                font-weight: 600;
+                margin-left: 0.5rem;
+            }
+
             @media (max-width: 768px) {
                 body {
                     padding: 1rem;
@@ -3370,21 +4400,23 @@ def index():
             <div class="content">
                 <form method="POST" enctype="multipart/form-data" class="upload-form" id="uploadForm">
                     <div class="file-upload-area" id="uploadArea">
+                     <input type="file" name="pdf" accept=".pdf" multiple required class="file-input" id="fileInput">
                         <div class="upload-icon">
-                            <i class="fas fa-cloud-upload-alt"></i>
+                            <i class="fas fa-cloud-upload-alt" style="color:#1e40af;"></i>
                         </div>
-                        <div class="upload-text">Drop your PDF file here</div>
-                        <div class="upload-hint">or click to browse files</div>
-                        <input type="file" name="pdf" accept=".pdf" required class="file-input" id="fileInput">
+                        <div class="upload-text">Drop your PDF files here</div>
+                        <div class="upload-hint">or click to browse files (multiple files supported)</div>
                     </div>
                     
-                    <button type="submit" class="submit-btn" id="submitBtn">
+                    <div class="selected-files" id="selectedFiles"></div>
+                    
+                    <button type="submit" class="submit-btn" id="submitBtn" disabled>
                         <i class="fas fa-upload"></i> Upload & Extract Data
                     </button>
                     
                     <div class="loading" id="loading">
                         <div class="spinner"></div>
-                        <p style="color: var(--text-secondary);">Processing your document...</p>
+                        <p style="color: var(--text-secondary);">Processing your documents...</p>
                     </div>
                 </form>
                 
@@ -3429,58 +4461,131 @@ def index():
             const uploadForm = document.getElementById('uploadForm');
             const submitBtn = document.getElementById('submitBtn');
             const loading = document.getElementById('loading');
-            
+            const selectedFiles = document.getElementById('selectedFiles');
+
+            let selectedFilesList = [];
+            let fileDialogOpen = false;
+
             // Drag and drop functionality
             uploadArea.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 uploadArea.classList.add('dragover');
             });
-            
+
             uploadArea.addEventListener('dragleave', () => {
                 uploadArea.classList.remove('dragover');
             });
-            
+
             uploadArea.addEventListener('drop', (e) => {
                 e.preventDefault();
                 uploadArea.classList.remove('dragover');
-                const files = e.dataTransfer.files;
-                if (files.length > 0) {
-                    fileInput.files = files;
-                    updateUploadText(files[0].name);
-                }
+                const files = Array.from(e.dataTransfer.files);
+                handleFiles(files);
             });
-            
+
             // File input change
             fileInput.addEventListener('change', (e) => {
-                if (e.target.files.length > 0) {
-                    updateUploadText(e.target.files[0].name);
-                }
+                fileDialogOpen = false;
+                const files = Array.from(e.target.files);
+                handleFiles(files);
             });
-            
-            function updateUploadText(filename) {
+
+            function handleFiles(files) {
+                // Filter only PDF files
+                const pdfFiles = files.filter(file => file.type === 'application/pdf');
+                if (pdfFiles.length === 0) {
+                    alert('Please select only PDF files.');
+                    return;
+                }
+                selectedFilesList = pdfFiles;
+                updateFileDisplay();
+                updateSubmitButton();
+                // Update file input for form submit
+                const dt = new DataTransfer();
+                selectedFilesList.forEach(file => dt.items.add(file));
+                fileInput.files = dt.files;
+            }
+
+            function updateFileDisplay() {
+                if (selectedFilesList.length === 0) {
+                    selectedFiles.style.display = 'none';
+                    // Reset upload text/hint
+                    const uploadText = uploadArea.querySelector('.upload-text');
+                    const uploadHint = uploadArea.querySelector('.upload-hint');
+                    uploadText.textContent = 'Drop your PDF files here';
+                    uploadHint.textContent = 'or click to browse files (multiple files supported)';
+                    return;
+                }
+                selectedFiles.style.display = 'block';
+                selectedFiles.innerHTML = '';
+                selectedFilesList.forEach((file, index) => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item';
+                    fileItem.innerHTML = `
+                        <span class="file-name">${file.name}</span>
+                        <button type="button" class="remove-file" onclick="removeFile(${index})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    `;
+                    selectedFiles.appendChild(fileItem);
+                });
+                // Update upload text
                 const uploadText = uploadArea.querySelector('.upload-text');
                 const uploadHint = uploadArea.querySelector('.upload-hint');
-                uploadText.textContent = filename;
-                uploadHint.textContent = 'Click to change file';
+                if (selectedFilesList.length === 1) {
+                    uploadText.textContent = selectedFilesList[0].name;
+                    uploadHint.textContent = 'Click to change files';
+                } else {
+                    uploadText.textContent = `${selectedFilesList.length} files selected`;
+                    uploadHint.textContent = 'Click to change files';
+                }
             }
-            
+
+            window.removeFile = function(index) {
+                selectedFilesList.splice(index, 1);
+                updateFileDisplay();
+                updateSubmitButton();
+                // Update file input for form submit
+                const dt = new DataTransfer();
+                selectedFilesList.forEach(file => dt.items.add(file));
+                fileInput.files = dt.files;
+            }
+
+            function updateSubmitButton() {
+                if (selectedFilesList.length > 0) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = `<i class="fas fa-upload"></i> Upload & Extract Data (${selectedFilesList.length} files)`;
+                } else {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = `<i class="fas fa-upload"></i> Upload & Extract Data`;
+                }
+            }
+
             // Form submission
             uploadForm.addEventListener('submit', () => {
+                if (selectedFilesList.length === 0) {
+                    alert('Please select at least one PDF file.');
+                    return;
+                }
                 submitBtn.style.display = 'none';
                 loading.style.display = 'block';
             });
-            
-            // Click to upload
-            uploadArea.addEventListener('click', () => {
-                fileInput.click();
+
+            // Click to upload (prevent multiple dialogs)
+            uploadArea.addEventListener('click', (e) => {
+                if (!fileDialogOpen) {
+                    fileDialogOpen = true;
+                    fileInput.click();
+                }
             });
         </script>
     </body>
     </html>
     '''
-
 if __name__ == '__main__':
-    # Database and tables are already created by setup_database.py
-    # So we don't need to create them again here
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000)   # debug=False for server
+
+
+
+ 
