@@ -27,7 +27,8 @@ app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 # POPPLER_PATH = r"C:\Users\Yiion-35\AppData\Local\Microsoft\WinGet\Packages\oschwartz10612.Poppler_Microsoft.Winget.Source_8wekyb3d8bbwe\poppler-24.08.0\Library\bin"
 
-pytesseract.pytesseract.tesseract_cmd = r'tesseract'  
+pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
+POPPLER_PATH = r"/usr/bin"
 
 
 # MySQL Database Configuration
@@ -3596,7 +3597,7 @@ def extract_text_from_pdf_ocr(pdf_path):
     images = convert_from_path(pdf_path, dpi=300, poppler_path=POPPLER_PATH)
     full_text = ""
     for img in images:
-        text = pytesseract.image_to_string(img, lang='eng+hin')
+        text = pytesseract.image_to_string(img, lang='eng')
         full_text += text + "\n"
     return full_text
 
