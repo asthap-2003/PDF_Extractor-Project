@@ -20,7 +20,7 @@ from reportlab.lib import colors
 import io
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploaded_pdfs'
+app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
 
 
 pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
