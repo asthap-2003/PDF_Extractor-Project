@@ -22,10 +22,6 @@ import io
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
 
-# Configure paths for your environment
-# 
-# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-# POPPLER_PATH = r"C:\Users\Yiion-35\AppData\Local\Microsoft\WinGet\Packages\oschwartz10612.Poppler_Microsoft.Winget.Source_8wekyb3d8bbwe\poppler-24.08.0\Library\bin"
 
 pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 POPPLER_PATH = r"/usr/bin"
