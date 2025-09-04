@@ -1,4 +1,5 @@
 from flask import Flask, request, render_template_string, send_file, redirect, jsonify, session, render_template, url_for
+import os
 from functools import wraps
 import json
 import os
@@ -20,6 +21,8 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib import colors
 import io
 import subprocess
+import csv
+import xlsxwriter
 
 app = Flask(__name__)
     
@@ -119,12 +122,12 @@ pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 POPPLER_PATH = r"/usr/bin"
 
 
-# MySQL Database Configuration
+# MySQL Database Configuration (from environment variables when set)
 db_config = {
-     'host': 'localhost',
-    'user': 'gem',
-    'password': 'Y!!0n1z3#',  # Same as in setup_database.py
-    'database': 'gem'
+     'host': os.environ.get('DB_HOST', 'localhost'),
+    'user': os.environ.get('DB_USER', 'root'),
+    'password': os.environ.get('DB_PASSWORD', ''),
+    'database': os.environ.get('DB_NAME', 'gem')
 }
 
 def generate_pdf_report(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value):
@@ -1679,16 +1682,7 @@ def contracts_list():
                     </div>
                 </div>
                 
-                <div class="content">
-                    <div class="search-section">
-                        <div class="search-container">
-                            <a href="/" class="btn btn-info">
-                                <i class="fas fa-upload"></i> Upload PDF
-                            </a>
-                            <input type="text" id="searchInput" class="search-input" placeholder="Search contracts by ID, organization, seller, or buyer...">
-                        </div>
-                    </div>
-                
+              
 
                 
                 <div class="table-container">
@@ -2075,6 +2069,110 @@ def contracts_list():
         
     except Exception as e:
         return f"Error loading contracts: {str(e)}"
+
+@app.route('/contracts/export')
+def export_contracts_excel():
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT 
+                c.contract_id,
+                c.filename,
+                o.type as organisation_type,
+                o.ministry,
+                o.department,
+                o.organisation_name,
+                o.office_zone,
+                s.gem_seller_id,
+                s.company_name,
+                s.contact_no as seller_contact_no,
+                s.email_id as seller_email_id,
+                s.address as seller_address,
+                s.msme_registration_number,
+                s.gstin as seller_gstin,
+                b.designation,
+                b.contact_no as buyer_contact_no,
+                b.email_id as buyer_email_id,
+                b.gstin as buyer_gstin,
+                b.address as buyer_address
+            FROM contracts c
+            LEFT JOIN organisations o ON c.contract_id = o.contract_id
+            LEFT JOIN sellers s ON c.contract_id = s.contract_id
+            LEFT JOIN buyers b ON c.contract_id = b.contract_id
+            ORDER BY c.upload_time DESC, c.contract_id DESC
+            """
+        )
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        # Build XLSX in-memory with styled columns and multi-line cells
+        mem = io.BytesIO()
+        workbook = xlsxwriter.Workbook(mem, {'in_memory': True})
+        worksheet = workbook.add_worksheet('Contracts')
+
+        # Formats
+        header_fmt = workbook.add_format({'bold': True, 'font_color': 'white', 'bg_color': '#1e40af', 'align': 'center', 'valign': 'vcenter', 'border': 1})
+        cell_fmt = workbook.add_format({'text_wrap': True, 'valign': 'top', 'border': 1})
+        id_fmt = workbook.add_format({'border': 1})
+        filename_fmt = workbook.add_format({'border': 1})
+
+        # Headers
+        headers = ['Contract ID', 'Filename', 'Organization', 'Seller', 'Buyer']
+        for c, h in enumerate(headers):
+            worksheet.write(0, c, h, header_fmt)
+
+        # Column widths
+        worksheet.set_column(0, 0, 18)
+        worksheet.set_column(1, 1, 38)
+        worksheet.set_column(2, 4, 42)
+
+        # Rows
+        row_idx = 1
+        for r in rows:
+            org_text = "\n".join([
+                f"Type: {r.get('organisation_type') or 'N/A'}",
+                f"Ministry: {r.get('ministry') or 'N/A'}",
+                f"Department: {r.get('department') or 'N/A'}",
+                f"Organization: {r.get('organisation_name') or 'N/A'}",
+                f"Office Zone: {r.get('office_zone') or 'N/A'}",
+            ])
+            seller_text = "\n".join([
+                f"Company: {r.get('company_name') or 'N/A'}",
+                f"Seller ID: {r.get('gem_seller_id') or 'N/A'}",
+                f"Contact: {r.get('seller_contact_no') or 'N/A'}",
+                f"Email: {r.get('seller_email_id') or 'N/A'}",
+                f"Address: {r.get('seller_address') or 'N/A'}",
+                f"MSME: {r.get('msme_registration_number') or 'N/A'}",
+                f"GSTIN: {r.get('seller_gstin') or 'N/A'}",
+            ])
+            buyer_text = "\n".join([
+                f"Designation: {r.get('designation') or 'N/A'}",
+                f"Contact: {r.get('buyer_contact_no') or 'N/A'}",
+                f"Email: {r.get('buyer_email_id') or 'N/A'}",
+                f"GSTIN: {r.get('buyer_gstin') or 'N/A'}",
+                f"Address: {r.get('buyer_address') or 'N/A'}",
+            ])
+
+            worksheet.write(row_idx, 0, r.get('contract_id') or '', id_fmt)
+            worksheet.write(row_idx, 1, r.get('filename') or '', filename_fmt)
+            worksheet.write(row_idx, 2, org_text, cell_fmt)
+            worksheet.write(row_idx, 3, seller_text, cell_fmt)
+            worksheet.write(row_idx, 4, buyer_text, cell_fmt)
+
+            row_idx += 1
+
+        # Freeze header row
+        worksheet.freeze_panes(1, 0)
+
+        workbook.close()
+        mem.seek(0)
+        filename = f"contracts_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        return send_file(mem, as_attachment=True, download_name=filename, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    except Exception as e:
+        return f"Error exporting: {str(e)}", 500
 
 @app.route('/details/<contract_id>')
 def contract_details(contract_id):
@@ -3816,7 +3914,8 @@ def index():
             print("✅ Saved:", file_path)
 
         if uploaded_files:
-            subprocess.Popen(["python3", "delete.py", app.config['UPLOAD_FOLDER']])
+            py_exe = sys.executable if hasattr(sys, 'executable') and sys.executable else 'python'
+            subprocess.Popen([py_exe, "delete.py", app.config['UPLOAD_FOLDER']])
 
             # Build HTML result page
             result_html = f'''
