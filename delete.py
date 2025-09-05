@@ -13,13 +13,16 @@ import shutil
 pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 POPPLER_PATH = r"/usr/bin"
 
-# -------------------- Database Config --------------------
-db_config = {
-    'host': 'localhost',
-    'user': 'gem',
-    'password': 'Y!!0n1z3#',
-    'database': 'gem'
-}
+# # -------------------- Database Config --------------------
+# db_config = {
+#     'host': 'localhost',
+#     'user': 'gem',
+#     'password': 'Y!!0n1z3#',
+#     'database': 'gem'
+# }
+
+
+from db_config import db_config
 
 # -------------------- DATABASE FUNCTION --------------------
 def save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, text_format):

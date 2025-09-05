@@ -1,13 +1,15 @@
 import mysql.connector
 from mysql.connector import Error
 
-# MySQL Database Configuration
-db_config = {
-     'host': 'localhost',
-    'user': 'gem',
-    'password': 'Y!!0n1z3#',  # Same as in setup_database.py
-    'database': 'gem'
-}
+# # MySQL Database Configuration
+# db_config = {
+#      'host': 'localhost',
+#     'user': 'gem',
+#     'password': 'Y!!0n1z3#',  # Same as in setup_database.py
+#     'database': 'gem'
+# }
+
+from db_config import db_config
 
 def create_database():
     """Create the database if it doesn't exist"""
