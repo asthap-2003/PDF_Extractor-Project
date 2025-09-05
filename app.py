@@ -884,14 +884,44 @@ def contracts_list():
                 .search-section {
                     padding: 1.5rem;
                     margin-bottom: 2rem;
-                }
+                    }
 
                 .search-container {
                     display: flex;
                     gap: 1rem;
                     align-items: center;
                     flex-wrap: wrap;
+                 }
+
+
+                 .search-input-group {
+                        min-width: 100%;
+                    }
+
+                    .state-search-group {
+                        min-width: 100%;
+                    }
+                    .search-input-group {
+                    display: flex;
+                    align-items: center;
+                    flex: 1;
+                    min-width: 200px;
+                    max-width: 400px;
+                    position: relative;
+                    }
+
+                .search-input {
+                    flex: 1;
+                    padding: 0.75rem 1rem;
+                    padding-right: 2.5rem;
+                    border: 2px solid var(--primary-color);
+                    border-radius: 6px;
+                    font-size: 0.875rem;
+                    transition: all 0.2s ease;
+                    background: var(--surface-color);
+                    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
                 }
+
 
                 .search-input {
                     flex: 1;
@@ -920,6 +950,81 @@ def contracts_list():
 
                 .btn-clear:hover {
                     background: #b91c1c;
+                }
+
+
+                                .clear-search-btn {
+                    position: absolute;
+                    right: 0.5rem;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: none;
+                    border: none;
+                    color: var(--text-secondary);
+                    cursor: pointer;
+                    padding: 0.25rem;
+                    border-radius: 50%;
+                    transition: all 0.2s ease;
+                    display: none;
+                }
+
+                .clear-search-btn:hover {
+                    background: var(--border-color);
+                    color: var(--text-primary);
+                }
+
+                .clear-search-btn.show {
+                    display: block;
+                }
+
+                .state-search-group {
+                    display: flex;
+                    align-items: center;
+                    position: relative;
+                    min-width: 250px;
+                }
+
+                .state-search-select {
+                    flex: 1;
+                    padding: 0.75rem 1rem;
+                    padding-right: 2.5rem;
+                    border: 2px solid var(--primary-color);
+                    border-radius: 6px;
+                    font-size: 0.875rem;
+                    transition: all 0.2s ease;
+                    background: var(--surface-color);
+                    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+                    cursor: pointer;
+                }
+
+                .state-search-select:focus {
+                    outline: none;
+                    border-color: var(--primary-color);
+                    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+                }
+
+                .clear-state-search-btn {
+                    position: absolute;
+                    right: 0.5rem;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: none;
+                    border: none;
+                    color: var(--text-secondary);
+                    cursor: pointer;
+                    padding: 0.25rem;
+                    border-radius: 50%;
+                    transition: all 0.2s ease;
+                    display: none;
+                }
+
+                .clear-state-search-btn:hover {
+                    background: var(--border-color);
+                    color: var(--text-primary);
+                }
+
+                .clear-state-search-btn.show {
+                    display: block;
                 }
 
 
@@ -1016,13 +1121,13 @@ def contracts_list():
                 }
 
                 .section-title {
-                    font-weight: 600;
-                    color: var(--text-primary);
-                    font-size: 0.75rem;
-                    margin-bottom: 0.5rem;
-                    display: flex;
-                    align-items: center;
-                    gap: 0.25rem;
+                      font-weight: 900;
+                      color: var(--primary-color);
+                      margin-bottom: 0.5rem;
+                      display: flex;
+                      align-items: center;
+                      gap: 0.25rem;
+                      font-size: 16px;
                 }
 
                 .data-item {
@@ -1030,7 +1135,7 @@ def contracts_list():
                     color: var(--text-secondary);
                     margin-bottom: 0.25rem;
                     display: flex;
-                    justify-content: space-between;
+                    justify-content:left;
                 }
 
                 .data-item strong {
@@ -1677,29 +1782,88 @@ def contracts_list():
             </style>
         </head>
         <body>
-           <div class="container">
+            <div class="container">
                 <div class="header contracts-header">
                     <div class="header-content">
                         <h1><img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTUiIGhlaWdodD0iNTUiIHZpZXdCb3g9IjAgMCA1NSA1NSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjU1IiBoZWlnaHQ9IjU1IiByeD0iMTIiIGZpbGw9IiMxRDc1RkYiLz4KPHRleHQgeD0iMjcuNSIgeT0iMzMiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5HRU08L3RleHQ+Cjwvc3ZnPgo=" alt="GEM Logo" style="width: 55px; height: 55px; margin-right: 15px; vertical-align: middle;"> GEM Contract Management</h1>
                     </div>
                 </div>
                 
-                
-               <div class="content">
-                    <div class="search-section">
-                        <div class="search-container" style="display:flex; align-items:center; gap:1rem; justify-content: space-between;">
-                            <a href="/" class="btn btn-info">
+                <!-- Search Section -->
+                <div class="search-section">
+                    <div class="search-container">
+                           
+                        <div class="search-input-group">
+                            <input type="text" id="searchInput" class="search-input" placeholder="Search contracts by ID, organization, seller, buyer, or products...">
+                            <button id="clearSearchBtn" class="clear-search-btn" title="Clear search">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="state-search-group">
+                            <select id="stateSearchSelect" class="state-search-select">
+                                <option value="">Select State for Search</option>
+                                <option value="Andhra Pradesh">Andhra Pradesh</option>
+                                <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                                <option value="Assam">Assam</option>
+                                <option value="Bihar">Bihar</option>
+                                <option value="Chhattisgarh">Chhattisgarh</option>
+                                <option value="Goa">Goa</option>
+                                <option value="Gujarat">Gujarat</option>
+                                <option value="Haryana">Haryana</option>
+                                <option value="Himachal Pradesh">Himachal Pradesh</option>
+                                <option value="Jharkhand">Jharkhand</option>
+                                <option value="Karnataka">Karnataka</option>
+                                <option value="Kerala">Kerala</option>
+                                <option value="Madhya Pradesh">Madhya Pradesh</option>
+                                <option value="Maharashtra">Maharashtra</option>
+                                <option value="Manipur">Manipur</option>
+                                <option value="Meghalaya">Meghalaya</option>
+                                <option value="Mizoram">Mizoram</option>
+                                <option value="Nagaland">Nagaland</option>
+                                <option value="Odisha">Odisha</option>
+                                <option value="Punjab">Punjab</option>
+                                <option value="Rajasthan">Rajasthan</option>
+                                <option value="Sikkim">Sikkim</option>
+                                <option value="Tamil Nadu">Tamil Nadu</option>
+                                <option value="Telangana">Telangana</option>
+                                <option value="Tripura">Tripura</option>
+                                <option value="Uttar Pradesh">Uttar Pradesh</option>
+                                <option value="Uttarakhand">Uttarakhand</option>
+                                <option value="West Bengal">West Bengal</option>
+                                <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+                                <option value="Chandigarh">Chandigarh</option>
+                                <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+                                <option value="Delhi">Delhi</option>
+                                <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+                                <option value="Ladakh">Ladakh</option>
+                                <option value="Lakshadweep">Lakshadweep</option>
+                                <option value="Puducherry">Puducherry</option>
+                            </select>
+                            <button id="clearStateSearchBtn" class="clear-state-search-btn" title="Clear state search">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                         <a href="/" class="btn btn-primary" style=" white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem;margin-left:auto; white-space:nowrap; background: var(--primary-color); border-color: var(--primary-dark);">
                                 <i class="fas fa-upload"></i> Upload PDF
+                            <style>
+                                .btn.btn-primary {
+                                    background: #1e40af;
+                                    color: #fff !important;
+                                    border: none;
+                                    box-shadow: 0 4px 12px rgba(37,99,235,0.12);
+                                }
+                            </style>
                             </a>
-                            <div style="display:flex; align-items:center; gap:0.75rem; flex:1;">
-                                <input type="text" id="searchInput" class="search-input" placeholder="Search contracts by ID, organization, seller, or buyer...">
-                            </div>
-                            <a href="/contracts/export" class="btn btn-success" style="margin-left:auto; white-space:nowrap; background: var(--primary-color); border-color: var(--primary-dark);">
+
+                          <a href="/contracts/export" class="btn btn-primary" style="white-space:nowrap; background: var(--primary-color); border-color: var(--primary-dark);">
                       
                                 <i class="fas fa-file-excel"></i> Export to Excel
                             </a>
-                        </div>
+
                     </div>
+                </div>
+                
 
                 
                 <div class="table-container">
@@ -1864,7 +2028,9 @@ def contracts_list():
                 // DOM elements
                 const searchInput = document.getElementById('searchInput');
                 const clearSearchBtn = document.getElementById('clearSearchBtn');
-                const tableBody = document.querySelector('tbody');
+                 const stateSearchSelect = document.getElementById('stateSearchSelect');
+                  const clearStateSearchBtn = document.getElementById('clearStateSearchBtn');
+                  const tableBody = document.querySelector('tbody');
 
                 
 
@@ -2059,6 +2225,47 @@ def contracts_list():
                 
                 clearSearchBtn.addEventListener('click', function() {
                     searchInput.value = '';
+                     clearSearchBtn.classList.remove('show');
+                    displayAllContracts();
+                });
+
+
+                   // Show/hide clear button for search input
+                searchInput.addEventListener('input', function() {
+                    if (this.value.trim() !== '') {
+                        clearSearchBtn.classList.add('show');
+                    } else {
+                        clearSearchBtn.classList.remove('show');
+                    }
+                });
+
+                // State search functionality
+                stateSearchSelect.addEventListener('change', function() {
+                    const selectedState = this.value.toLowerCase().trim();
+                    
+                    if (selectedState === '') {
+                        clearStateSearchBtn.classList.remove('show');
+                        displayAllContracts();
+                        return;
+                    }
+                    
+                    clearStateSearchBtn.classList.add('show');
+                    
+                    // Search for contracts containing the selected state in text_format
+                    const filteredContracts = allContracts.filter(contract => {
+                        if (contract.text_format && contract.text_format.toLowerCase().includes(selectedState)) {
+                            return true;
+                        }
+                        return false;
+                    });
+                    
+                    displayFilteredContracts(filteredContracts);
+                });
+
+                // Clear state search
+                clearStateSearchBtn.addEventListener('click', function() {
+                    stateSearchSelect.value = '';
+                    clearStateSearchBtn.classList.remove('show');
                     displayAllContracts();
                 });
                 
@@ -3952,15 +4159,7 @@ def index():
                         margin: 0;
                         padding: 0;
                     }}
-                    .header {{
-                        background: #1a73e8;
-                        color: #fff;
-                        padding: 15px 25px;
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-                    }}
+                
                     .header img {{
                         width: 32px;
                         height: 32px;
@@ -4020,7 +4219,7 @@ def index():
                         display: inline-block;
                         margin-top: 25px;
                         padding: 12px 24px;
-                        background: #1a73e8;
+                        background: #1e40af;
                         color: #fff;
                         font-size: 1rem;
                         font-weight: 600;
@@ -4039,20 +4238,25 @@ def index():
                 </style>
             </head>
             <body>
-                <div class="header">
-                    <img src="https://img.icons8.com/color/48/null/document.png" alt="Logo">
-                    <h1>GEM Contract Data Extractor</h1>
-                </div>
+               
 
                 <div class="container">
                     <i class="fa-solid fa-circle-check success-icon"></i>
-                    <h2>🎉 {len(uploaded_files)} Files Uploaded Successfully! 🎉</h2>
+                    <h2  style="color:#1e40af;">🎉 {len(uploaded_files)} Files Uploaded Successfully! 🎉</h2>
                     <p>Your PDF files were saved and extraction is running in the background.</p>
                     <ul>
                         {''.join([f"<li><i class='fa-solid fa-file-pdf'></i> {os.path.basename(f)}</li>" for f in uploaded_files])}
                     </ul>
-                    <a href="/" class="btn"><i class="fa-solid fa-upload"></i> Upload More</a>
-                </div>
+                    <div class="button" style=" display:flex; gap:10px;    align-items: center; justify-content: center;">
+                        <div>
+                            <a href="/" class="btn" ><i class="fa-solid fa-upload"></i> Upload More</a>
+                        </div>
+                        <div>
+                            <a href="/contracts" class="btn">
+                                <i class="fas fa-file-pdf"></i> View PDF
+                            </a> 
+                        </div>      
+                    </div>
             </body>
             </html>
             '''
@@ -4112,15 +4316,16 @@ def index():
             }
 
             .container {
-                max-width: 500px;
+                max-width: 1000px;
                 width: 100%;
                 background: var(--surface-color);
-                border-radius: var(--radius-lg);
+                border-radius: 10px;
                 box-shadow: var(--shadow-lg);
                 overflow: hidden;
                 border: 1px solid var(--border-color);
             }
 
+         
             .header {
                 background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
                 color: white;
@@ -4179,7 +4384,7 @@ def index():
             }
 
             .file-upload-area {
-                border: 2px dashed var(--border-color);
+                border: 2px dashed #1e40af;
                 border-radius: var(--radius-lg);
                 padding: 3rem 2rem;
                 background: var(--background-color);
@@ -4223,13 +4428,6 @@ def index():
                 font-weight: 400;
             }
 
-            .file-input {
-                position: absolute;
-                opacity: 0;
-                width: 100%;
-                height: 100%;
-                cursor: pointer;
-            }
 
             .selected-files {
                 margin-top: 1rem;
@@ -4483,6 +4681,15 @@ def index():
                 .features {
                     grid-template-columns: 1fr;
                 }
+
+                .file-input {
+                position: absolute;
+                opacity: 0;
+                width: 100%;
+                height: 100%;
+                cursor: pointer;
+                display: none; 
+            }
             }
         </style>
     </head>
@@ -4498,8 +4705,9 @@ def index():
             <div class="content">
                 <form method="POST" enctype="multipart/form-data" class="upload-form" id="uploadForm">
                     <div class="file-upload-area" id="uploadArea">
-                     <input type="file" name="pdf" accept=".pdf" multiple required class="file-input" id="fileInput">
+                    
                         <div class="upload-icon">
+                         <input type="file" name="pdf" accept=".pdf" multiple required class="file-input" id="fileInput" style="display:none;">
                             <i class="fas fa-cloud-upload-alt" style="color:#1e40af;"></i>
                         </div>
                         <div class="upload-text">Drop your PDF files here</div>
@@ -4518,32 +4726,7 @@ def index():
                     </div>
                 </form>
                 
-                <div class="extraction-options">
-                    <h3 style="margin-bottom: 1rem; color: var(--text-primary); font-weight: 600;">Extraction Options:</h3>
-                    <div class="checkbox-group">
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="extract_organization" checked>
-                            <span class="checkmark"></span>
-                            Extract organization details and contract information
-                        </label>
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="extract_buyer" checked>
-                            <span class="checkmark"></span>
-                            Extract buyer contact and designation details
-                        </label>
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="extract_seller" checked>
-                            <span class="checkmark"></span>
-                            Extract seller company and business information
-                        </label>
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="extract_product" checked>
-                            <span class="checkmark"></span>
-                            Extract product details and order values
-                        </label>
-                    </div>
-                </div>
-                
+    
                 <div class="view-contracts">
                     <a href="/contracts">
                         <i class="fas fa-list"></i>
