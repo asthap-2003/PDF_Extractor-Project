@@ -950,9 +950,10 @@ def contracts_list():
                 }
 
                 .state-search-select {
-                    flex: 1;
-                    padding: 0.75rem 1rem;
-                    padding-right: 2.5rem;
+                    width: 180px;
+                    min-width: 120px;
+                    max-width: 200px;
+                    padding: 0.75rem 0.75rem;
                     border: 2px solid var(--primary-color);
                     border-radius: 6px;
                     font-size: 0.875rem;
@@ -1096,13 +1097,14 @@ def contracts_list():
                 }
 
                 .section-title {
-                    font-weight: 900;
-                    color: var(--text-primary);
-                
-                    margin-bottom: 0.5rem;
-                    display: flex;
-                    align-items: center;
-                    gap: 0.25rem;
+                       font-weight: 900;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+    display: flex
+;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 16px;
                 }
 
                 .data-item {
@@ -1771,6 +1773,22 @@ def contracts_list():
                 <!-- Search Section -->
                 <div class="search-section">
                     <div class="search-container">
+                            <a href="/" class="btn btn-primary" style="margin-right: 10px; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-upload"></i> Upload PDF
+                            <style>
+                                .btn.btn-primary {
+                                    background: #1e40af;
+                                    color: #fff !important;
+                                    border: none;
+                                    box-shadow: 0 4px 12px rgba(37,99,235,0.12);
+                                }
+                                .btn.btn-primary:hover {
+                                    background: #1e40af;
+                                    color: #fff !important;
+                                    box-shadow: 0 8px 24px rgba(37,99,235,0.18);
+                                }
+                            </style>
+                            </a>
                         <div class="search-input-group">
                             <input type="text" id="searchInput" class="search-input" placeholder="Search contracts by ID, organization, seller, buyer, or products...">
                             <button id="clearSearchBtn" class="clear-search-btn" title="Clear search">
@@ -1837,7 +1855,7 @@ def contracts_list():
                             </tr>
                         </thead>
                         <tbody>
-        '''
+    '''
         
         if contracts:
             for i, contract in enumerate(contracts, 1):
