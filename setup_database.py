@@ -1,16 +1,20 @@
 import mysql.connector
+import os
 from mysql.connector import Error
 
 # MySQL Database Configuration
 db_config = {
-     'host': 'localhost',
-    'user': 'gem',
-    'password': 'Y!!0n1z3#',  # Same as in setup_database.py
-    'database': 'gem'
+     'host': os.environ.get('DB_HOST', 'localhost'),
+    'user': os.environ.get('DB_USER', 'root'),
+    'password': os.environ.get('DB_PASSWORD', ''),
+    'database': os.environ.get('DB_NAME', 'gem')
 }
+
 
 def create_database():
     """Create the database if it doesn't exist"""
+    conn = None
+    cursor = None
     try:
         # Connect to MySQL server without specifying a database
         conn = mysql.connector.connect(
@@ -27,12 +31,15 @@ def create_database():
     except Error as e:
         print(f"Error creating database: {e}")
     finally:
-        if conn.is_connected():
-            cursor.close()
+        if conn and conn.is_connected():
+            if cursor:
+                cursor.close()
             conn.close()
 
 def create_tables():
     """Create all the tables for the contract data"""
+    conn = None
+    cursor = None
     try:
         # Connect to the specific database
         conn = mysql.connector.connect(**db_config)
@@ -134,12 +141,15 @@ def create_tables():
     except Error as e:
         print(f"Error creating tables: {e}")
     finally:
-        if conn.is_connected():
-            cursor.close()
+        if conn and conn.is_connected():
+            if cursor:
+                cursor.close()
             conn.close()
 
 def verify_tables():
     """Verify that all tables were created correctly"""
+    conn = None
+    cursor = None
     try:
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
@@ -163,8 +173,9 @@ def verify_tables():
     except Error as e:
         print(f"Error verifying tables: {e}")
     finally:
-        if conn.is_connected():
-            cursor.close()
+        if conn and conn.is_connected():
+            if cursor:
+                cursor.close()
             conn.close()
 
 def main():

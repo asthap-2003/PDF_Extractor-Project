@@ -1,12 +1,14 @@
 import mysql.connector
+import os
 
 # MySQL Database Configuration
 db_config = {
-     'host': 'localhost',
-    'user': 'gem',
-    'password': 'Y!!0n1z3#',  # Same as in setup_database.py
-    'database': 'gem'
+     'host': os.environ.get('DB_HOST', 'localhost'),
+    'user': os.environ.get('DB_USER', 'root'),
+    'password': os.environ.get('DB_PASSWORD', ''),
+    'database': os.environ.get('DB_NAME', 'gem')
 }
+
 
 try:
     conn = mysql.connector.connect(**db_config)

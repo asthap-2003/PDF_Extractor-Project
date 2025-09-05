@@ -891,11 +891,19 @@ def contracts_list():
                     flex-wrap: wrap;
                 }
 
-                .search-input {
+                .search-input-group {
+                    display: flex;
+                    align-items: center;
                     flex: 1;
                     min-width: 200px;
                     max-width: 400px;
+                    position: relative;
+                }
+
+                .search-input {
+                    flex: 1;
                     padding: 0.75rem 1rem;
+                    padding-right: 2.5rem;
                     border: 2px solid var(--primary-color);
                     border-radius: 6px;
                     font-size: 0.875rem;
@@ -908,6 +916,80 @@ def contracts_list():
                     outline: none;
                     border-color: var(--primary-color);
                     box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+                }
+
+                .clear-search-btn {
+                    position: absolute;
+                    right: 0.5rem;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: none;
+                    border: none;
+                    color: var(--text-secondary);
+                    cursor: pointer;
+                    padding: 0.25rem;
+                    border-radius: 50%;
+                    transition: all 0.2s ease;
+                    display: none;
+                }
+
+                .clear-search-btn:hover {
+                    background: var(--border-color);
+                    color: var(--text-primary);
+                }
+
+                .clear-search-btn.show {
+                    display: block;
+                }
+
+                .state-search-group {
+                    display: flex;
+                    align-items: center;
+                    position: relative;
+                    min-width: 250px;
+                }
+
+                .state-search-select {
+                    flex: 1;
+                    padding: 0.75rem 1rem;
+                    padding-right: 2.5rem;
+                    border: 2px solid var(--primary-color);
+                    border-radius: 6px;
+                    font-size: 0.875rem;
+                    transition: all 0.2s ease;
+                    background: var(--surface-color);
+                    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+                    cursor: pointer;
+                }
+
+                .state-search-select:focus {
+                    outline: none;
+                    border-color: var(--primary-color);
+                    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+                }
+
+                .clear-state-search-btn {
+                    position: absolute;
+                    right: 0.5rem;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: none;
+                    border: none;
+                    color: var(--text-secondary);
+                    cursor: pointer;
+                    padding: 0.25rem;
+                    border-radius: 50%;
+                    transition: all 0.2s ease;
+                    display: none;
+                }
+
+                .clear-state-search-btn:hover {
+                    background: var(--border-color);
+                    color: var(--text-primary);
+                }
+
+                .clear-state-search-btn.show {
+                    display: block;
                 }
 
                 .btn-clear {
@@ -1151,7 +1233,11 @@ def contracts_list():
                         flex-direction: column;
                     }
 
-                    .search-input {
+                    .search-input-group {
+                        min-width: 100%;
+                    }
+
+                    .state-search-group {
                         min-width: 100%;
                     }
 
@@ -1682,8 +1768,61 @@ def contracts_list():
                     </div>
                 </div>
                 
-              
-
+                <!-- Search Section -->
+                <div class="search-section">
+                    <div class="search-container">
+                        <div class="search-input-group">
+                            <input type="text" id="searchInput" class="search-input" placeholder="Search contracts by ID, organization, seller, buyer, or products...">
+                            <button id="clearSearchBtn" class="clear-search-btn" title="Clear search">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="state-search-group">
+                            <select id="stateSearchSelect" class="state-search-select">
+                                <option value="">Select State for Search</option>
+                                <option value="Andhra Pradesh">Andhra Pradesh</option>
+                                <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                                <option value="Assam">Assam</option>
+                                <option value="Bihar">Bihar</option>
+                                <option value="Chhattisgarh">Chhattisgarh</option>
+                                <option value="Goa">Goa</option>
+                                <option value="Gujarat">Gujarat</option>
+                                <option value="Haryana">Haryana</option>
+                                <option value="Himachal Pradesh">Himachal Pradesh</option>
+                                <option value="Jharkhand">Jharkhand</option>
+                                <option value="Karnataka">Karnataka</option>
+                                <option value="Kerala">Kerala</option>
+                                <option value="Madhya Pradesh">Madhya Pradesh</option>
+                                <option value="Maharashtra">Maharashtra</option>
+                                <option value="Manipur">Manipur</option>
+                                <option value="Meghalaya">Meghalaya</option>
+                                <option value="Mizoram">Mizoram</option>
+                                <option value="Nagaland">Nagaland</option>
+                                <option value="Odisha">Odisha</option>
+                                <option value="Punjab">Punjab</option>
+                                <option value="Rajasthan">Rajasthan</option>
+                                <option value="Sikkim">Sikkim</option>
+                                <option value="Tamil Nadu">Tamil Nadu</option>
+                                <option value="Telangana">Telangana</option>
+                                <option value="Tripura">Tripura</option>
+                                <option value="Uttar Pradesh">Uttar Pradesh</option>
+                                <option value="Uttarakhand">Uttarakhand</option>
+                                <option value="West Bengal">West Bengal</option>
+                                <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+                                <option value="Chandigarh">Chandigarh</option>
+                                <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+                                <option value="Delhi">Delhi</option>
+                                <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+                                <option value="Ladakh">Ladakh</option>
+                                <option value="Lakshadweep">Lakshadweep</option>
+                                <option value="Puducherry">Puducherry</option>
+                            </select>
+                            <button id="clearStateSearchBtn" class="clear-state-search-btn" title="Clear state search">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="table-container">
                     <table>
@@ -1847,6 +1986,8 @@ def contracts_list():
                 // DOM elements
                 const searchInput = document.getElementById('searchInput');
                 const clearSearchBtn = document.getElementById('clearSearchBtn');
+                const stateSearchSelect = document.getElementById('stateSearchSelect');
+                const clearStateSearchBtn = document.getElementById('clearStateSearchBtn');
                 const tableBody = document.querySelector('tbody');
 
                 
@@ -2042,6 +2183,46 @@ def contracts_list():
                 
                 clearSearchBtn.addEventListener('click', function() {
                     searchInput.value = '';
+                    clearSearchBtn.classList.remove('show');
+                    displayAllContracts();
+                });
+
+                // Show/hide clear button for search input
+                searchInput.addEventListener('input', function() {
+                    if (this.value.trim() !== '') {
+                        clearSearchBtn.classList.add('show');
+                    } else {
+                        clearSearchBtn.classList.remove('show');
+                    }
+                });
+
+                // State search functionality
+                stateSearchSelect.addEventListener('change', function() {
+                    const selectedState = this.value.toLowerCase().trim();
+                    
+                    if (selectedState === '') {
+                        clearStateSearchBtn.classList.remove('show');
+                        displayAllContracts();
+                        return;
+                    }
+                    
+                    clearStateSearchBtn.classList.add('show');
+                    
+                    // Search for contracts containing the selected state in text_format
+                    const filteredContracts = allContracts.filter(contract => {
+                        if (contract.text_format && contract.text_format.toLowerCase().includes(selectedState)) {
+                            return true;
+                        }
+                        return false;
+                    });
+                    
+                    displayFilteredContracts(filteredContracts);
+                });
+
+                // Clear state search
+                clearStateSearchBtn.addEventListener('click', function() {
+                    stateSearchSelect.value = '';
+                    clearStateSearchBtn.classList.remove('show');
                     displayAllContracts();
                 });
                 
