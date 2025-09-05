@@ -1110,7 +1110,7 @@ def contracts_list():
                     color: var(--text-secondary);
                     margin-bottom: 0.25rem;
                     display: flex;
-                    justify-content: space-between;
+                    justify-content: left;
                 }
 
                 .data-item strong {
