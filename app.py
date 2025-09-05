@@ -1096,9 +1096,9 @@ def contracts_list():
                 }
 
                 .section-title {
-                    font-weight: 600;
+                    font-weight: 900;
                     color: var(--text-primary);
-                    font-size: 0.75rem;
+                
                     margin-bottom: 0.5rem;
                     display: flex;
                     align-items: center;
