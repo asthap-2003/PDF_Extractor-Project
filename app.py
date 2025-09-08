@@ -4852,12 +4852,9 @@ def index():
                 loading.style.display = 'block';
             });
 
-            // Click to upload (prevent multiple dialogs)
+            // Click to upload (always open file dialog)
             uploadArea.addEventListener('click', (e) => {
-                if (!fileDialogOpen) {
-                    fileDialogOpen = true;
-                    fileInput.click();
-                }
+                fileInput.click();
             });
         </script>
     </body>
