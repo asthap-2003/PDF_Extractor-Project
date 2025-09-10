@@ -28,6 +28,15 @@ POPPLER_PATH = r"/usr/bin"
  
 from db_config import db_config
  
+#-----------------Extract Date-----------------#
+def extract_first_date(text_format):
+    # Look for "Date ::" followed by any common date format
+    pattern = r"DDaattee\s*::\s*([0-9]{1,4}[-/ ]?[A-Za-z0-9]{1,3}[-/ ]?[0-9]{2,4})"
+    match = re.search(pattern, text_format)
+    if match:
+        return match.group(1).strip()
+    return None
+
 # -------------------- DATABASE FUNCTION --------------------
 def save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, text_format):
     conn = None
@@ -35,12 +44,35 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
     try:
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
- 
+        
+        date_str = extract_first_date(text_format)
+
+        if date_str:
+            parsed_date = None
+            # Try multiple formats
+            for fmt in (
+                "%d-%m-%Y", "%d/%m/%Y", "%d %m %Y",        # numeric
+                "%d-%b-%Y", "%d/%b/%Y", "%d %b %Y",        # short month name
+                "%d-%B-%Y", "%d/%B/%Y", "%d %B %Y",        # full month name
+                "%Y-%m-%d", "%Y/%m/%d", "%Y %m %d"         # ISO style
+            ):
+                try:
+                    parsed_date = datetime.strptime(date_str, fmt)
+                    break
+                except ValueError:
+                    continue
+
+            if parsed_date:
+                date_str = parsed_date.strftime("%Y-%m-%d")  # normalize to YYYY-MM-DD
+            else:
+                date_str = None
+
+        print(f"Extracted date: {date_str}")
         # contracts table
         cursor.execute("""
-            INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (contract_id, filename, datetime.now(), total_order_value, text_format))
+            INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format, date)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (contract_id, filename, datetime.now(), total_order_value, text_format, date_str))
  
         # organisations table
         cursor.execute("""

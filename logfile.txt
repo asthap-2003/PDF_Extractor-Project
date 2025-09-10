@@ -22,3 +22,15 @@
 [2025-09-08 16:47:18] Processing 7/7: cd575e70c3304292b6cda92933611a32_0c5b1c4e9d894128846be2d7bcf97802_GEMC-511687732736382-25012025_copy_2.pdf
 [2025-09-08 16:47:27] Successfully processed and moved cd575e70c3304292b6cda92933611a32_0c5b1c4e9d894128846be2d7bcf97802_GEMC-511687732736382-25012025_copy_2.pdf
 [2025-09-08 16:47:27] Summary: Successfully processed: 7, Failed: 0
+[2025-09-10 10:55:15] process_unprocessed_pdfs called. Current files in unprocessed_pdfs: ['14f9cf9756544ad39c8d7811cebebc73_GEMC-511687799048994-27012025.pdf']
+[2025-09-10 10:55:15] File detected in unprocessed_pdfs: 14f9cf9756544ad39c8d7811cebebc73_GEMC-511687799048994-27012025.pdf
+[2025-09-10 10:55:15] Found 1 PDF files to process in unprocessed_pdfs folder
+[2025-09-10 10:55:15] Processing 1/1: 14f9cf9756544ad39c8d7811cebebc73_GEMC-511687799048994-27012025.pdf
+[2025-09-10 10:55:19] Failed to save 14f9cf9756544ad39c8d7811cebebc73_GEMC-511687799048994-27012025.pdf
+[2025-09-10 10:55:19] Summary: Successfully processed: 0, Failed: 1
+[2025-09-10 10:57:19] process_unprocessed_pdfs called. Current files in unprocessed_pdfs: ['14f9cf9756544ad39c8d7811cebebc73_GEMC-511687799048994-27012025.pdf']
+[2025-09-10 10:57:19] File detected in unprocessed_pdfs: 14f9cf9756544ad39c8d7811cebebc73_GEMC-511687799048994-27012025.pdf
+[2025-09-10 10:57:19] Found 1 PDF files to process in unprocessed_pdfs folder
+[2025-09-10 10:57:19] Processing 1/1: 14f9cf9756544ad39c8d7811cebebc73_GEMC-511687799048994-27012025.pdf
+[2025-09-10 10:57:22] Successfully processed and moved 14f9cf9756544ad39c8d7811cebebc73_GEMC-511687799048994-27012025.pdf
+[2025-09-10 10:57:22] Summary: Successfully processed: 1, Failed: 0

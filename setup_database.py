@@ -1,4 +1,6 @@
 import mysql.connector
+import re
+from datetime import datetime
 from mysql.connector import Error
 
 # # MySQL Database Configuration
@@ -130,7 +132,16 @@ def create_tables():
         except Error as e:
             # Column might already exist, which is fine
             print("text_format column already exists or couldn't be added")
-        
+        # add date column with default current timestamp
+        try:
+            cursor.execute("""
+            ALTER TABLE contracts 
+            ADD COLUMN date DATETIME DEFAULT NULL
+            """)
+            print("Added date column to contracts table")
+        except Error as e:
+            # Column might already exist, which is fine
+            print("date column already exists or couldn't be added")
         conn.commit()
         
     except Error as e:
@@ -139,6 +150,62 @@ def create_tables():
         if conn.is_connected():
             cursor.close()
             conn.close()
+
+def extract_first_date(text):
+    if not text:
+        return None
+
+    # Match multiple possible date formats
+    date_patterns = [
+        r"\b\d{2}[-/]\d{2}[-/]\d{4}\b",   # 12-09-2025 or 12/09/2025
+        r"\b\d{4}[-/]\d{2}[-/]\d{2}\b",   # 2025-09-12 or 2025/09/12
+        r"\b\d{2}\s+[A-Za-z]{3,9}\s+\d{4}\b",  # 12 September 2025
+        r"\b\d{2}[-/][A-Za-z]{3}[-/]\d{4}\b", # 12-Sep-2025
+    ]
+
+    for pattern in date_patterns:
+        match = re.search(pattern, text)
+        if match:
+            date_str = match.group(0)
+
+            # Try parsing with multiple formats
+            for fmt in ("%d-%m-%Y", "%d/%m/%Y", "%Y-%m-%d", "%Y/%m/%d",
+                        "%d %B %Y", "%d %b %Y", "%d-%b-%Y", "%d/%b/%Y"):
+                try:
+                    return datetime.strptime(date_str, fmt).strftime("%Y-%m-%d")
+                except ValueError:
+                    continue
+    return None
+
+def update_contract_dates():
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+
+        # Fetch all contracts where date is NULL
+        cursor.execute("SELECT contract_id, text_format FROM contracts WHERE date IS NULL")
+        rows = cursor.fetchall()
+
+        for row in rows:
+            extracted_date = extract_first_date(row['text_format'])
+            if extracted_date:
+                cursor.execute("""
+                    UPDATE contracts 
+                    SET date = %s 
+                    WHERE contract_id = %s
+                """, (extracted_date, row['contract_id']))
+                print(f"Updated contract {row['contract_id']} with date {extracted_date}")
+
+        conn.commit()
+        print("All missing dates updated successfully!")
+
+    except Error as e:
+        print(f"Error updating contract dates: {e}")
+    finally:
+        if conn.is_connected():
+            cursor.close()
+            conn.close()
+
 
 def verify_tables():
     """Verify that all tables were created correctly"""
@@ -181,6 +248,10 @@ def main():
     
     # Step 3: Verify tables were created
     verify_tables()
+
+    # Step 4: Update contract dates
+    update_contract_dates()
+
     
     print("\nDatabase setup completed!")
 
