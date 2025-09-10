@@ -679,6 +679,7 @@ def contracts_list():
                 c.upload_time,
                 c.total_order_value,
                 c.text_format,
+                c.date,
                 o.type,
                 o.ministry,
                 o.department,
@@ -2105,8 +2106,10 @@ def contracts_list():
                 const clearDateBtn = document.getElementById('clearDateBtn');
 
                 function filterByDateRange() {
+                
                     const fromDate = dateFromInput.value ? new Date(dateFromInput.value) : null;
                     const toDate = dateToInput.value ? new Date(dateToInput.value) : null;
+                    console.log(fromDate, toDate);
 
                     if (!fromDate && !toDate) {
                         clearDateBtn.classList.remove('show');
@@ -2114,10 +2117,13 @@ def contracts_list():
                         return;
                     }
 
+                    console.log('Filtering by date range:', fromDate, toDate);
+
                     clearDateBtn.classList.add('show');
 
                     const filteredContracts = allContracts.filter(contract => {
                         if (!contract.date) return false; // skip if no date
+                        console.log('Contract Date:', contract.date);
 
                         const contractDate = new Date(contract.date); // assuming contract.date is string like "2025-09-10"
 
@@ -2126,6 +2132,7 @@ def contracts_list():
 
                         return true;
                     });
+                    console.log('Filtered Contracts:', filteredContracts);
 
                     displayFilteredContracts(filteredContracts);
                 }
@@ -2431,7 +2438,7 @@ def export_contracts_excel():
                 b.contact_no as buyer_contact_no,
                 b.email_id as buyer_email_id,
                 b.gstin as buyer_gstin,
-                b.address as buyer_address
+                b.address as buyer_address,
             FROM contracts c
             LEFT JOIN organisations o ON c.contract_id = o.contract_id
             LEFT JOIN sellers s ON c.contract_id = s.contract_id
