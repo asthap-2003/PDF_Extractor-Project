@@ -707,6 +707,7 @@ def contracts_list():
         
         # Now get product names separately to avoid GROUP BY issues
         for contract in all_contracts:
+            # Get concatenated product names
             cursor.execute("""
                 SELECT GROUP_CONCAT(product_name SEPARATOR ', ') as product_names
                 FROM products 
@@ -714,7 +715,17 @@ def contracts_list():
             """, (contract['contract_id'],))
             product_result = cursor.fetchone()
             contract['product_names'] = product_result['product_names'] if product_result else None
-        
+
+            # Get concatenated category_name_quadrant
+            cursor.execute("""
+                SELECT GROUP_CONCAT(category_name_quadrant SEPARATOR ', ') as category_names
+                FROM products 
+                WHERE contract_id = %s
+            """, (contract['contract_id'],))
+            category_result = cursor.fetchone()
+            contract['category_names'] = category_result['category_names'] if category_result else None
+
+
         # Use custom pagination class
         paginator = Paginator(all_contracts, per_page)
         contracts = paginator.get_page(page)
@@ -1778,6 +1789,58 @@ def contracts_list():
                     .page-size-selector select:hover {
                         border-color: var(--primary-light);
                     }
+ .btn.btn-primary {
+                    background: #1e40af;
+                    color: #fff !important;
+                    border: none;
+                    box-shadow: 0 4px 12px rgba(37,99,235,0.12);
+                }
+                .date-search-group {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                    flex-wrap: wrap; /* makes it responsive */
+                    padding: 0.5rem 0;
+                }
+                .date-search-group label {
+                    font-weight: 500;
+                    color: var(--text-secondary);
+                    font-size: 0.875rem;
+                    white-space: nowrap;
+                }
+                .date-input {
+                    padding: 0.5rem 0.75rem;
+                    border: 2px solid var(--primary-color);
+                    border-radius: var(--radius-md);
+                    font-size: 0.875rem;
+                    background: var(--surface-color);
+                    transition: all 0.2s ease;
+                    box-shadow: 0 0 0 2px rgba(30, 64, 175, 0.05);
+                    min-width: 150px;
+                }
+                .date-input:focus {
+                    outline: none;
+                    border-color: var(--primary-light);
+                    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.2);
+                }
+                .clear-date-btn {
+                    background: var(--danger-color);
+                    color: #fff;
+                    border: none;
+                    border-radius: var(--radius-md);
+                    padding: 0.5rem 0.75rem;
+                    cursor: pointer;
+                    font-size: 0.875rem;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: background 0.2s ease, transform 0.15s ease;
+                }
+                .clear-date-btn:hover {
+                    background: #b91c1c;
+                    transform: translateY(-1px);
+                }
+
                 }
             </style>
         </head>
@@ -1844,24 +1907,28 @@ def contracts_list():
                             </button>
                         </div>
 
-                         <a href="/" class="btn btn-primary" style=" white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem;margin-left:auto; white-space:nowrap; background: var(--primary-color); border-color: var(--primary-dark);">
-                                <i class="fas fa-upload"></i> Upload PDF
-                            <style>
-                                .btn.btn-primary {
-                                    background: #1e40af;
-                                    color: #fff !important;
-                                    border: none;
-                                    box-shadow: 0 4px 12px rgba(37,99,235,0.12);
-                                }
-                            </style>
-                            </a>
+                            
 
-                          <a href="/contracts/export" class="btn btn-primary" style="white-space:nowrap; background: var(--primary-color); border-color: var(--primary-dark);">
-                      
-                                <i class="fas fa-file-excel"></i> Export to Excel
-                            </a>
+                        <a href="/" class="btn btn-primary" style=" white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem;margin-left:auto; white-space:nowrap; background: var(--primary-color); border-color: var(--primary-dark);">
+                            <i class="fas fa-upload"></i> Upload PDF
+                        </a>
 
+                        <a href="/contracts/export" class="btn btn-primary" style="white-space:nowrap; background: var(--primary-color); border-color: var(--primary-dark);">
+                            <i class="fas fa-file-excel"></i> Export to Excel
+                        </a>
                     </div>
+
+                    <div class="date-search-group">
+                            <label for="dateFrom">From:</label>
+                            <input type="date" id="dateFrom" class="date-input">
+
+                            <label for="dateTo">To:</label>
+                            <input type="date" id="dateTo" class="date-input">
+
+                            <button id="clearDateBtn" class="clear-date-btn" title="Clear date filter">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
                 </div>
                 
 
@@ -2015,7 +2082,8 @@ def contracts_list():
         
         <script>
                 // Store contracts data for search
-                const allContracts = ''' + json.dumps(contracts_for_json) + ''';
+                 const allContracts = ''' + json.dumps(contracts_for_json, default=str) + ''';
+                console.log(allContracts)
                 
                 // Page size change function
                 function changePageSize(newSize) {
@@ -2025,14 +2093,55 @@ def contracts_list():
                     window.location.href = window.location.pathname + '?' + urlParams.toString();
                 }
                 
-                // DOM elements
+                 // DOM elements
                 const searchInput = document.getElementById('searchInput');
                 const clearSearchBtn = document.getElementById('clearSearchBtn');
-                 const stateSearchSelect = document.getElementById('stateSearchSelect');
-                  const clearStateSearchBtn = document.getElementById('clearStateSearchBtn');
-                  const tableBody = document.querySelector('tbody');
+                const stateSearchSelect = document.getElementById('stateSearchSelect');
+                const clearStateSearchBtn = document.getElementById('clearStateSearchBtn');
+                const tableBody = document.querySelector('tbody');
+                // Date range filter functionality
+                const dateFromInput = document.getElementById('dateFrom');
+                const dateToInput = document.getElementById('dateTo');
+                const clearDateBtn = document.getElementById('clearDateBtn');
 
-                
+                function filterByDateRange() {
+                    const fromDate = dateFromInput.value ? new Date(dateFromInput.value) : null;
+                    const toDate = dateToInput.value ? new Date(dateToInput.value) : null;
+
+                    if (!fromDate && !toDate) {
+                        clearDateBtn.classList.remove('show');
+                        displayAllContracts();
+                        return;
+                    }
+
+                    clearDateBtn.classList.add('show');
+
+                    const filteredContracts = allContracts.filter(contract => {
+                        if (!contract.date) return false; // skip if no date
+
+                        const contractDate = new Date(contract.date); // assuming contract.date is string like "2025-09-10"
+
+                        if (fromDate && contractDate < fromDate) return false;
+                        if (toDate && contractDate > toDate) return false;
+
+                        return true;
+                    });
+
+                    displayFilteredContracts(filteredContracts);
+                }
+
+                // Attach event listeners for date change
+                dateFromInput.addEventListener('change', filterByDateRange);
+                dateToInput.addEventListener('change', filterByDateRange);
+
+                // Clear date filter
+                clearDateBtn.addEventListener('click', function () {
+                    dateFromInput.value = '';
+                    dateToInput.value = '';
+                    clearDateBtn.classList.remove('show');
+                    displayAllContracts();
+                });
+
 
                 
                 // Search functionality with debouncing
@@ -2080,6 +2189,7 @@ def contracts_list():
                             
                             // Search in product names
                             if (contract.product_names && contract.product_names.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.category_names && contract.category_names.toLowerCase().includes(searchTerm)) return true;
                             
                             // Search in text_format (complete PDF text)
                             if (contract.text_format && contract.text_format.toLowerCase().includes(searchTerm)) return true;
@@ -2251,9 +2361,9 @@ def contracts_list():
                     
                     clearStateSearchBtn.classList.add('show');
                     
-                    // Search for contracts containing the selected state in text_format
+                    // Search for contracts containing the selected state ONLY in seller address
                     const filteredContracts = allContracts.filter(contract => {
-                        if (contract.text_format && contract.text_format.toLowerCase().includes(selectedState)) {
+                        if (contract.seller_address && contract.seller_address.toLowerCase().includes(selectedState)) {
                             return true;
                         }
                         return false;
