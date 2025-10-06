@@ -2438,7 +2438,7 @@ def export_contracts_excel():
                 b.contact_no as buyer_contact_no,
                 b.email_id as buyer_email_id,
                 b.gstin as buyer_gstin,
-                b.address as buyer_address,
+                b.address as buyer_address
             FROM contracts c
             LEFT JOIN organisations o ON c.contract_id = o.contract_id
             LEFT JOIN sellers s ON c.contract_id = s.contract_id
