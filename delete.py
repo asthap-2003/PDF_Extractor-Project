@@ -25,7 +25,7 @@ POPPLER_PATH = r"/usr/bin"
 from db_config import db_config
 
 # -------------------- DATABASE FUNCTION --------------------
-def save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, text_format):
+def save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, text_format, contract_date):
     conn = None
     cursor = None
     try:
@@ -34,9 +34,9 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
 
         # contracts table
         cursor.execute("""
-            INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format)
-            VALUES (%s, %s, %s, %s, %s)
-        """, (contract_id, filename, datetime.now(), total_order_value, text_format))
+            INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format, date)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (contract_id, filename, datetime.now(), total_order_value, text_format, contract_date))
 
         # organisations table
         cursor.execute("""
@@ -217,7 +217,31 @@ def process_unprocessed_pdfs():
             products_list = extract_products(combined_text)
             total_order_value = extract_total_order_value(combined_text)
 
-            save_success = save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, combined_text)
+            # Extract contract date from text (try multiple patterns)
+            contract_date = extract_field(combined_text, "Contract Date")
+            if not contract_date:
+                contract_date = extract_field(combined_text, "Date")
+            # If still not found, use regex for dd-MMM-yyyy
+            if not contract_date:
+                import re
+                date_matches = re.findall(r"[0-9]{2}-[A-Za-z]{3}-[0-9]{4}", combined_text)
+                if date_matches:
+                    contract_date = date_matches[0]
+            # Try to parse date string to datetime, fallback to None
+            parsed_contract_date = None
+            if contract_date:
+                try:
+                    parsed_contract_date = datetime.strptime(contract_date, "%d-%b-%Y")
+                except Exception:
+                    try:
+                        parsed_contract_date = datetime.strptime(contract_date, "%d-%m-%Y")
+                    except Exception:
+                        try:
+                            parsed_contract_date = datetime.strptime(contract_date, "%d/%m/%Y")
+                        except Exception:
+                            parsed_contract_date = None
+
+            save_success = save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, combined_text, parsed_contract_date)
 
             if save_success:
                 processed_files.append(filename)
