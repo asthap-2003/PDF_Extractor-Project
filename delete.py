@@ -67,6 +67,26 @@ def clean_address(text):
     return text
 
 
+def truncate_on_punc(s: str) -> str:
+    """Truncate the string at the first occurrence of noisy punctuation.
+    Truncate the string at the first occurrence of any non-alphanumeric (keyboard) symbol.
+    This will keep only letters, numbers and spaces. As requested, any other symbol
+    (comma, @, #, -, /, \\, |, braces, etc.) will mark the truncation point so
+    everything after it is hidden.
+    Returns trimmed substring before the first symbol.
+    """
+    if not s:
+        return ''
+    s = str(s).strip()
+    # Split on the first character that is NOT a letter, digit or whitespace.
+    # This captures the user's request to treat any keyboard symbol (except letters/numbers)
+    # as the truncation start point.
+    parts = re.split(r"([^A-Za-z0-9\s])", s, maxsplit=1)
+    # re.split with a capturing group keeps the separator as an element; take the first element
+    # which is the substring before the separator. If no separator found, parts[0] is whole string.
+    return parts[0].strip()
+
+
 def save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, text_format):
     conn = None
     cursor = None
@@ -280,9 +300,11 @@ def extract_products(text):
     product_blocks = re.split(r'Product Name\s*[:\-]', text, flags=re.IGNORECASE)[1:]
     for block in product_blocks:
         product = {}
-        product['Product Name'] = clean_hindi(block.split("\n")[0].strip())
+        raw_name = block.split("\n")[0].strip()
+        product['Product Name'] = truncate_on_punc(clean_hindi(raw_name))
         for field in ["Brand", "Brand Type", "Catalogue Status", "Selling As", "Category Name & Quadrant", "Model", "HSN Code"]:
-            product[field] = clean_hindi(extract_field(block, field) or "")
+            val = extract_field(block, field) or ""
+            product[field] = truncate_on_punc(clean_hindi(val))
         products.append(product)
     return products
 
@@ -482,7 +504,7 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
             seller_data.get("GSTIN")
         ))
 
-        # products table
+      # products table
         for product in products_list:
             cursor.execute("""
                 INSERT INTO products (contract_id, product_name, brand, brand_type, catalogue_status, selling_as, category_name_quadrant, model, hsn_code)
@@ -498,7 +520,7 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
                 product.get("Model"),
                 product.get("HSN Code")
             ))
-
+ 
         conn.commit()
         print("Data saved to database successfully")
         return True
