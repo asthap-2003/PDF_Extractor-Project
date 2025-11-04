@@ -354,16 +354,37 @@ def process_unprocessed_pdfs():
                 "Organisation Name": extract_field(combined_text, "Organisation Name"),
                 "Office Zone": extract_field(combined_text, "Office Zone")
             }
+            # Preserve original buyer extraction logic (do not change buyer behavior).
             buyer_contact = ""
             seller_contact = ""
-            contact_lines = [line for line in combined_text.splitlines() if 'Contact No.' in line]
-            if len(contact_lines) > 0:
-                parts = contact_lines[0].split('Contact No.')
+            lines = combined_text.splitlines()
+            contact_lines = [ln for ln in lines if re.search(r'Contact No\.?', ln, re.IGNORECASE)]
+            if contact_lines:
+                parts = re.split(r'Contact No\.?', contact_lines[0], flags=re.IGNORECASE)
                 if len(parts) > 1:
                     buyer_contact = clean_hindi(parts[1].strip())
-            contact_regex = re.compile(r'Contact No\\.?\s*[:\\-]?\s*(\d{10})')
-            contact_numbers = contact_regex.findall(combined_text)
-            seller_contact = clean_hindi(contact_numbers[1]) if len(contact_numbers) > 1 else ""
+
+            # Now try to find the seller contact by searching lines after the first Contact No. occurrence
+            seller_found = False
+            first_idx = None
+            for idx, ln in enumerate(lines):
+                if re.search(r'Contact No\.?', ln, re.IGNORECASE):
+                    first_idx = idx
+                    break
+            if first_idx is not None:
+                for ln in lines[first_idx+1:]:
+                    m = re.search(r'(\d{10})', ln)
+                    if m:
+                        seller_contact = clean_hindi(m.group(1))
+                        seller_found = True
+                        break
+
+            # Fallback across whole text for a second Contact No. occurrence if not found above
+            if not seller_found:
+                contact_regex = re.compile(r'Contact No\\.?\s*[:\\-]?\s*(\d{10})', re.IGNORECASE)
+                contact_numbers = contact_regex.findall(combined_text)
+                if len(contact_numbers) > 1:
+                    seller_contact = clean_hindi(contact_numbers[1])
             buyer_address = extract_buyer_address(combined_text)
             seller_address = extract_seller_address_after_marker(combined_text)
 
