@@ -358,30 +358,43 @@ def process_unprocessed_pdfs():
             buyer_contact = ""
             seller_contact = ""
             lines = combined_text.splitlines()
-            contact_lines = [ln for ln in lines if re.search(r'Contact No\.?', ln, re.IGNORECASE)]
+            # Buyer: keep the original behavior but when possible capture the entire right-side
+            # substring of the first 'Contact No.' line (including dashes, spaces, prefixes).
+            # This preserves the full number string as printed in the PDF.
+            buyer_contact = ""
+            contact_lines = [line for line in lines if re.search(r'Contact No\.?', line, re.IGNORECASE)]
             if contact_lines:
-                parts = re.split(r'Contact No\.?', contact_lines[0], flags=re.IGNORECASE)
-                if len(parts) > 1:
-                    buyer_contact = clean_hindi(parts[1].strip())
+                first_line = contact_lines[0]
+                m_token = re.search(r'Contact No\.?', first_line, re.IGNORECASE)
+                after = first_line[m_token.end():] if m_token else first_line
+                after_str = after.strip()
+                # If after_str contains any digit, accept the full substring as the contact (user wants full string)
+                if re.search(r'\d', after_str):
+                    buyer_contact = after_str
+                else:
+                    # fallback: try to find any 10-digit group
+                    m2 = re.search(r'(\d{10})', after)
+                    if m2:
+                        buyer_contact = m2.group(1)
+                    else:
+                        buyer_contact = clean_hindi(after_str)
 
-            # Now try to find the seller contact by searching lines after the first Contact No. occurrence
-            seller_found = False
-            first_idx = None
-            for idx, ln in enumerate(lines):
-                if re.search(r'Contact No\.?', ln, re.IGNORECASE):
-                    first_idx = idx
-                    break
-            if first_idx is not None:
-                for ln in lines[first_idx+1:]:
-                    m = re.search(r'(\d{10})', ln)
-                    if m:
-                        seller_contact = clean_hindi(m.group(1))
-                        seller_found = True
-                        break
-
-            # Fallback across whole text for a second Contact No. occurrence if not found above
-            if not seller_found:
-                contact_regex = re.compile(r'Contact No\\.?\s*[:\\-]?\s*(\d{10})', re.IGNORECASE)
+            # Seller: prefer the second 'Contact No.' line and capture the full right-side substring on that line.
+            seller_contact = ""
+            if len(contact_lines) > 1:
+                second_line = contact_lines[1]
+                m_token2 = re.search(r'Contact No\.?', second_line, re.IGNORECASE)
+                after2 = second_line[m_token2.end():] if m_token2 else second_line
+                after2_str = after2.strip()
+                if re.search(r'\d', after2_str):
+                    seller_contact = after2_str
+                else:
+                    m3 = re.search(r'(\d{10})', after2)
+                    if m3:
+                        seller_contact = m3.group(1)
+            else:
+                # Fallback: if only one 'Contact No.' line, search whole text for a second occurrence
+                contact_regex = re.compile(r'Contact No\\.?\\s*[:\\-]?\\s*(\\d{10})', re.IGNORECASE)
                 contact_numbers = contact_regex.findall(combined_text)
                 if len(contact_numbers) > 1:
                     seller_contact = clean_hindi(contact_numbers[1])
