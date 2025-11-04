@@ -172,6 +172,14 @@ def extract_complete_text(pdf_path):
     return full_text
 
 # -------------------- REGEX EXTRACTION --------------------
+
+def extract_contact_number(text):
+    # Extract all 10-digit numbers, optionally with +91 prefix, spaces, or dashes
+    pattern = re.compile(r'(?:\+91[-\s]?)?(\d{10})')
+    matches = pattern.findall(text)
+    return matches  # Return all found contact numbers as a list
+
+
 def extract_field(text, field_name):
     # Primary regex search for 'FieldName: value' style
     pattern = re.compile(rf"{re.escape(field_name)}\s*[:\-]\s*(.+?)(?=\n\S|$)", re.IGNORECASE)
@@ -462,9 +470,28 @@ def process_unprocessed_pdfs():
                 "Organisation Name": extract_field(combined_text, "Organisation Name"),
                 "Office Zone": extract_field(combined_text, "Office Zone")
             }
+
+
+              # Extract contact numbers from text_format using regex
+            # Buyer: extract full string after first 'Contact No.' occurrence
+            buyer_contact = ""
+            seller_contact = ""
+            contact_lines = [line for line in combined_text.splitlines() if 'Contact No.' in line]
+            if len(contact_lines) > 0:
+                # Take everything after 'Contact No.' marker (including dashes, spaces, etc.)
+                parts = contact_lines[0].split('Contact No.')
+                if len(parts) > 1:
+                    buyer_contact = parts[1].strip()
+            # Seller: keep previous logic (10 digit number)
+            contact_regex = re.compile(r'Contact No\.?\s*[:\-]?\s*(\d{10})')
+            contact_numbers = contact_regex.findall(combined_text)
+            seller_contact = contact_numbers[1] if len(contact_numbers) > 1 else ""
+
+
+
             buyer_data = {
                 "Designation": extract_field(combined_text, "Designation"),
-                "Contact No.": extract_field(combined_text, "Contact No"),
+                  "Contact No.": buyer_contact,
                 "Email ID": extract_field(combined_text, "Email ID"),
                 "GSTIN": extract_field(combined_text, "GSTIN"),
                 "Address": extract_field(combined_text, "Address")
@@ -472,7 +499,7 @@ def process_unprocessed_pdfs():
             seller_data = {
                 "GeM Seller ID": extract_field(combined_text, "GeM Seller ID"),
                 "Company Name": extract_field(combined_text, "Company Name"),
-                "Contact No.": extract_field(combined_text, "Contact No"),
+                "Contact No.": seller_contact,
                 "Email ID": extract_field(combined_text, "Email ID"),
                 "Address": extract_field(combined_text, "Address"),
                 "MSME Registration number": extract_field(combined_text, "MSME Registration number"),
