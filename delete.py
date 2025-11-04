@@ -346,6 +346,18 @@ def process_unprocessed_pdfs():
         try:
             contract_id = str(uuid.uuid4())
             combined_text = extract_complete_text(file_path)
+            # Save extracted text immediately into pdf_texts/ so any PDF placed into
+            # `unprocessed_pdfs/` will get a text copy before further processing.
+            try:
+                text_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pdf_texts')
+                os.makedirs(text_dir, exist_ok=True)
+                txt_name = os.path.splitext(filename)[0] + '.txt'
+                txt_path = os.path.join(text_dir, txt_name)
+                with open(txt_path, 'w', encoding='utf-8') as tf:
+                    tf.write(combined_text)
+                log_event(f"Saved extracted text for {filename} -> {txt_path}")
+            except Exception as e:
+                log_event(f"Failed to save extracted text for {filename}: {e}")
 
             organisation_data = {
                 "Type": extract_field(combined_text, "Type"),

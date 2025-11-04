@@ -29,6 +29,50 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
 app.secret_key = 'replace-this-with-a-strong-secret-key'
 
+# Poppler path for pdf2image on Linux
+POPPLER_PATH = "/usr/bin"
+
+
+def _extract_text_from_pdf_ocr(pdf_path):
+    """Fallback OCR using pdf2image + pytesseract."""
+    try:
+        images = convert_from_path(pdf_path, dpi=300, poppler_path=POPPLER_PATH)
+    except Exception:
+        # Try without explicit poppler_path if that fails
+        images = convert_from_path(pdf_path, dpi=300)
+    full_text = ""
+    for img in images:
+        try:
+            full_text += pytesseract.image_to_string(img, lang='eng+hin') + "\n"
+        except Exception:
+            try:
+                full_text += pytesseract.image_to_string(img) + "\n"
+            except Exception:
+                pass
+    return full_text
+
+
+def _extract_complete_text_for_app(pdf_path):
+    text = ""
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            for page in pdf.pages:
+                try:
+                    text += (page.extract_text() or "") + "\n"
+                except Exception:
+                    continue
+    except Exception as e:
+        print(f"pdfplumber open error: {e}")
+    # If pdfplumber gave nothing, try OCR fallback
+    if not text.strip():
+        try:
+            text = _extract_text_from_pdf_ocr(pdf_path)
+        except Exception as e:
+            print(f"OCR fallback error: {e}")
+    if not text.strip():
+        text = f"[No text extracted from {os.path.basename(pdf_path)}]"
+    return text
+
 # Inline Login HTML (kept here as requested; external template remains unused)
 LOGIN_PAGE_HTML = """
 <!DOCTYPE html>
@@ -4254,6 +4298,18 @@ def index():
             filename = f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
+            # Save extracted text copy immediately to pdf_texts/ before any further processing
+            try:
+                text_dir = 'pdf_texts'
+                os.makedirs(text_dir, exist_ok=True)
+                extracted = _extract_complete_text_for_app(file_path)
+                txt_name = os.path.splitext(filename)[0] + '.txt'
+                txt_path = os.path.join(text_dir, txt_name)
+                with open(txt_path, 'w', encoding='utf-8') as tf:
+                    tf.write(extracted)
+                print(f"✅ Extracted text saved: {txt_path}")
+            except Exception as e:
+                print(f"⚠️ Failed to save extracted text for {file_path}: {e}")
             uploaded_files.append(file_path)
             print("✅ Saved:", file_path)
 
