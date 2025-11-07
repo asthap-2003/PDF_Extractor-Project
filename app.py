@@ -4308,6 +4308,40 @@ def index():
                 with open(txt_path, 'w', encoding='utf-8') as tf:
                     tf.write(extracted)
                 print(f"✅ Extracted text saved: {txt_path}")
+
+                # Upsert extracted full text into contracts.text_format so the DB has the same content
+                try:
+                    conn = mysql.connector.connect(**db_config)
+                    cur = conn.cursor()
+                    # Try to find existing contract by filename
+                    cur.execute("SELECT contract_id FROM contracts WHERE filename = %s LIMIT 1", (filename,))
+                    res = cur.fetchone()
+                    if res and res[0]:
+                        # Update existing contract's text_format and upload_time
+                        cur.execute("UPDATE contracts SET text_format = %s, upload_time = %s WHERE contract_id = %s",
+                                    (extracted, datetime.now(), res[0]))
+                        print(f"Updated contracts.text_format for existing contract_id={res[0]} filename={filename}")
+                    else:
+                        # No existing contract for this filename — insert a minimal contract row
+                        new_cid = str(uuid.uuid4())
+                        cur.execute("INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format) VALUES (%s, %s, %s, %s, %s)",
+                                    (new_cid, filename, datetime.now(), None, extracted))
+                        print(f"Inserted new contract {new_cid} for uploaded file {filename} with text_format populated")
+                    conn.commit()
+                except Exception as e:
+                    print(f"DB upsert error for extracted text (file={filename}): {e}")
+                finally:
+                    try:
+                        if cur:
+                            cur.close()
+                    except Exception:
+                        pass
+                    try:
+                        if conn and conn.is_connected():
+                            conn.close()
+                    except Exception:
+                        pass
+
             except Exception as e:
                 print(f"⚠️ Failed to save extracted text for {file_path}: {e}")
             uploaded_files.append(file_path)
