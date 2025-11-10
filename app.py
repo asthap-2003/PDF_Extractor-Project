@@ -1361,7 +1361,7 @@ def contracts_list():
                     .pagination-container {
                         background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%) !important;
                         border-radius: 12px !important;
-                        padding: 1.5rem !important;
+                        padding: 0.5rem !important ;
                         margin: 2rem 0 !important;
                         box-shadow: 0 8px 20px rgba(30, 64, 175, 0.25) !important;
                         border: 2px solid rgba(255, 255, 255, 0.2) !important;
@@ -1874,7 +1874,7 @@ def contracts_list():
         </div>
         
         <!-- Attractive Pagination -->
-        <div id="pagination-container" class="pagination-container" style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%) !important; border-radius: 12px; padding: 1.5rem; margin: 2rem 0; box-shadow: 0 8px 20px rgba(30, 64, 175, 0.25); border: 2px solid rgba(255, 255, 255, 0.2);">
+        <div id="pagination-container" class="pagination-container" style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%) !important; border-radius: 0px; padding: 3px !important; margin: 2rem 0; box-shadow: 0 8px 20px rgba(30, 64, 175, 0.25); border: 2px solid rgba(255, 255, 255, 0.2);">
         ''' + pagination_html + '''
         </div>
         
