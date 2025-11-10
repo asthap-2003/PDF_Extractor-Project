@@ -1107,7 +1107,7 @@ def contracts_list():
                     overflow-y: visible;
                     border: 1px solid var(--border-color);
                     margin-bottom: 2rem;
-                    margin-top: 1rem;
+                    margin-top: -1rem;
                     width: 100%;
                     max-width: 100%;
                 }
@@ -1629,19 +1629,32 @@ def contracts_list():
                     </div>
                 </div>
                 
-                <!-- Search Section -->
-                <div class="search-section">
-                    <div class="search-container">
+                <!-- Action Buttons Row -->
+                <div style="display: flex; justify-content: flex-end; align-items: center; padding: 0.75rem 1.5rem; gap: 0.75rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                    <a href="/" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary-color); border-color: var(--primary-dark);">
+                        <i class="fas fa-upload"></i> Upload PDF
+                    </a>
+                    <a href="/contracts/export" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary-color); border-color: var(--primary-dark);">
+                        <i class="fas fa-file-excel"></i> Export to Excel
+                    </a>
+                </div>
+                
+                <!-- Filters Row -->
+                <div class="search-section" style="padding: 1rem 1.5rem; background: white; border-bottom: 1px solid #e2e8f0;margin-left: -17px;">
+                    <div style="display: flex; gap: 0.75rem; align-items: stretch; flex-wrap: wrap;">
                            
-                        <div class="search-input-group">
-                            <input type="text" id="searchInput" class="search-input" placeholder="Search contracts by ID, organization, seller, buyer, or products...">
-                            <button id="clearSearchBtn" class="clear-search-btn" title="Clear search">
+                        <!-- Search Input -->
+                        <div style="position: relative; flex: 1; min-width: 280px; max-width: 400px;">
+                            <input type="text" id="searchInput" class="search-input" placeholder="Search contracts by ID, organization, seller..." style="width: 100%; height: 38px; padding: 0.5rem 2.5rem 0.5rem 1rem; border: 2px solid #1e40af; border-radius: 6px; font-size: 0.875rem; background: white; box-sizing: border-box;">
+                            <button id="clearSearchBtn" class="clear-search-btn" title="Clear search" style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer; padding: 0.25rem; display: none; font-size: 0.875rem;">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
-                        <div class="state-search-group">
-                            <select id="stateSearchSelect" class="state-search-select">
-                                <option value="">Select State for Search</option>
+                        
+                        <!-- State Select -->
+                        <div style="position: relative; flex: 0 0 auto; min-width: 220px;">
+                            <select id="stateSearchSelect" class="state-search-select" style="width: 100%; height: 38px; padding: 0.5rem 2.5rem 0.5rem 1rem; border: 2px solid #1e40af; border-radius: 6px; font-size: 0.875rem; background: white; cursor: pointer; box-sizing: border-box; appearance: none; background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%231e40af%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1em;">
+                                <option value="">Select State</option>
                                 <option value="Andhra Pradesh">Andhra Pradesh</option>
                                 <option value="Arunachal Pradesh">Arunachal Pradesh</option>
                                 <option value="Assam">Assam</option>
@@ -1679,33 +1692,32 @@ def contracts_list():
                                 <option value="Lakshadweep">Lakshadweep</option>
                                 <option value="Puducherry">Puducherry</option>
                             </select>
-                            <button id="clearStateSearchBtn" class="clear-state-search-btn" title="Clear state search">
+                            <button id="clearStateSearchBtn" class="clear-state-search-btn" title="Clear state search" style="position: absolute; right: 1.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer; padding: 0.25rem; display: none; font-size: 0.875rem; z-index: 10;">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
 
-                            
+                        <!-- Date From with Clear -->
+                        <div style="position: relative; flex: 0 0 auto; width: 170px;">
+                            <input type="date" id="dateFrom" class="date-input" placeholder="mm/dd/yyyy" style="width: 100%; height: 38px; padding: 0.5rem 2.25rem 0.5rem 0.75rem; border: 2px solid #1e40af; border-radius: 6px; font-size: 0.875rem; background: white; box-sizing: border-box; cursor: pointer;">
+                            <button id="clearDateFromBtn" class="clear-date-from-btn" title="Clear from date" style="position: absolute; right: 0.25rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer; padding: 0.25rem; display: none; font-size: 0.875rem;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
 
-                        <a href="/" class="btn btn-primary" style=" white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem;margin-left:auto; white-space:nowrap; background: var(--primary-color); border-color: var(--primary-dark);">
-                            <i class="fas fa-upload"></i> Upload PDF
-                        </a>
+                        <!-- Date To with Clear -->
+                        <div style="position: relative; flex: 0 0 auto; width: 170px;">
+                            <input type="date" id="dateTo" class="date-input" placeholder="mm/dd/yyyy" style="width: 100%; height: 38px; padding: 0.5rem 2.25rem 0.5rem 0.75rem; border: 2px solid #1e40af; border-radius: 6px; font-size: 0.875rem; background: white; box-sizing: border-box; cursor: pointer;">
+                            <button id="clearDateToBtn" class="clear-date-to-btn" title="Clear to date" style="position: absolute; right: 0.25rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer; padding: 0.25rem; display: none; font-size: 0.875rem;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
 
-                        <a href="/contracts/export" class="btn btn-primary" style="white-space:nowrap; background: var(--primary-color); border-color: var(--primary-dark);">
-                            <i class="fas fa-file-excel"></i> Export to Excel
-                        </a>
+                        <!-- Clear All Dates Button -->
+                        <button id="clearDateBtn" class="clear-date-btn" title="Clear all dates" style="flex: 0 0 auto; width: 38px; height: 38px; background: #1e40af; color: white; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; transition: background 0.2s ease;">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
-
-                    <div class="date-search-group">
-                            <label for="dateFrom">From:</label>
-                            <input type="date" id="dateFrom" class="date-input">
-
-                            <label for="dateTo">To:</label>
-                            <input type="date" id="dateTo" class="date-input">
-
-                            <button id="clearDateBtn" class="clear-date-btn" title="Clear date filter">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
                 </div>
                 
 
@@ -2253,9 +2265,44 @@ def contracts_list():
                     applyFilters();
                 });
                 
+                // Individual date clear buttons
+                const clearDateFromBtn = document.getElementById('clearDateFromBtn');
+                const clearDateToBtn = document.getElementById('clearDateToBtn');
+                
+                if (clearDateFromBtn) {
+                    clearDateFromBtn.addEventListener('click', () => {
+                        dateFromInput.value = '';
+                        clearDateFromBtn.style.display = 'none';
+                        applyFilters();
+                    });
+                }
+                
+                if (clearDateToBtn) {
+                    clearDateToBtn.addEventListener('click', () => {
+                        dateToInput.value = '';
+                        clearDateToBtn.style.display = 'none';
+                        applyFilters();
+                    });
+                }
+                
+                // Show/hide individual date clear buttons
+                dateFromInput.addEventListener('change', () => {
+                    if (clearDateFromBtn) {
+                        clearDateFromBtn.style.display = dateFromInput.value ? 'block' : 'none';
+                    }
+                });
+                
+                dateToInput.addEventListener('change', () => {
+                    if (clearDateToBtn) {
+                        clearDateToBtn.style.display = dateToInput.value ? 'block' : 'none';
+                    }
+                });
+                
                 clearDateBtn.addEventListener('click', () => {
                     dateFromInput.value = '';
                     dateToInput.value = '';
+                    if (clearDateFromBtn) clearDateFromBtn.style.display = 'none';
+                    if (clearDateToBtn) clearDateToBtn.style.display = 'none';
                     clearDateBtn.classList.remove('show');
                     applyFilters();
                 });
