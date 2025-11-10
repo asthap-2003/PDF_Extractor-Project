@@ -1907,27 +1907,44 @@ def contracts_list():
                     const endRecord = Math.min(currentPage * perPage, totalRecords);
                     
                     // Inline styles for consistency
-                    const infoStyle = 'style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; padding: 1rem 1.5rem; background: rgba(255, 255, 255, 0.95); border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);"';
-                    const summaryStyle = 'style="color: #1e40af; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;"';
-                    const pagesStyle = 'style="color: #1e40af; font-weight: 700; font-size: 0.95rem; background: rgba(30, 64, 175, 0.08); padding: 0.5rem 1rem; border-radius: 6px;"';
-                    const controlsStyle = 'style="display: flex; gap: 0.5rem; align-items: center; justify-content: center; flex-wrap: wrap; padding: 1.5rem; background: rgba(255, 255, 255, 0.95); border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);"';
+                    const mainContainerStyle = 'style="display: flex; flex-direction: column; gap: 1.5rem; padding: 2rem; background: rgba(255, 255, 255, 0.98); border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);"';
+                    const infoRowStyle = 'style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;"';
+                    const summaryStyle = 'style="color: #1e40af; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;"';
+                    const pagesStyle = 'style="color: #1e40af; font-weight: 700; font-size: 0.95rem; background: rgba(30, 64, 175, 0.1); padding: 0.5rem 1rem; border-radius: 6px;"';
+                    const controlsStyle = 'style="display: flex; gap: 0.5rem; align-items: center; justify-content: center; flex-wrap: wrap;"';
                     const btnStyle = 'style="display: inline-flex; align-items: center; justify-content: center; padding: 0.6rem 1rem; border: 1px solid #e2e8f0; background: white; color: #1e40af; text-decoration: none; border-radius: 6px; font-size: 0.875rem; font-weight: 600; transition: all 0.2s ease; min-width: 2.5rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);"';
                     const btnActiveStyle = 'style="display: inline-flex; align-items: center; justify-content: center; padding: 0.6rem 1rem; border: 1px solid #1e40af; background: #1e40af; color: white; text-decoration: none; border-radius: 6px; font-size: 0.875rem; font-weight: 600; min-width: 2.5rem; box-shadow: 0 4px 8px rgba(30, 64, 175, 0.25);"';
                     const btnDisabledStyle = 'style="display: inline-flex; align-items: center; justify-content: center; padding: 0.6rem 1rem; border: 1px solid #e2e8f0; background: #f1f5f9; color: #94a3b8; border-radius: 6px; font-size: 0.875rem; font-weight: 600; min-width: 2.5rem; opacity: 0.4; cursor: not-allowed;"';
                     const ellipsisStyle = 'style="padding: 0.6rem 0.5rem; color: #64748b; font-weight: 600; font-size: 0.875rem;"';
+                    const selectorStyle = 'style="display: flex; justify-content: center; align-items: center; gap: 0.75rem; font-size: 0.875rem; color: #1e293b; font-weight: 600;"';
                     
-                    let html = 
-                        '<div class="pagination-info" ' + infoStyle + '>' +
-                            '<span class="pagination-summary" ' + summaryStyle + '>' +
+                    let html = '<div ' + mainContainerStyle + '>';
+                    
+                    // Top info row: Showing X to Y and Page selector
+                    html += '<div ' + infoRowStyle + '>' +
+                            '<span ' + summaryStyle + '>' +
                                 '<i class="fas fa-info-circle"></i>' +
                                 'Showing ' + startRecord + ' to ' + endRecord + ' of ' + totalRecords + ' records' +
                             '</span>' +
-                            '<span class="pagination-pages" ' + pagesStyle + '>' +
-                                'Page ' + currentPage + ' of ' + totalPages +
-                            '</span>' +
+                            '<div ' + selectorStyle + '>' +
+                                '<label for="pageSize">Show:</label>' +
+                                '<select id="pageSize" onchange="changePageSize(this.value)" style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; border-radius: 6px; background: white; color: #1e293b; font-size: 0.875rem; cursor: pointer; font-weight: 600; min-width: 80px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);">';
+                    
+                    availableSizes.forEach(size => {
+                        const selected = size === perPage ? 'selected' : '';
+                        html += '<option value="' + size + '" ' + selected + '>' + size + '</option>';
+                    });
+                    
+                    html += '</select>' +
+                            '<span>per page</span>' +
                         '</div>' +
-                       
-                        '<div class="pagination-controls" ' + controlsStyle + '>';
+                    '</div>';
+                    
+                    // Second row: Pagination controls + Page info together
+                    html += '<div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">';
+                    
+                    // Pagination controls in center
+                    html += '<div ' + controlsStyle + ' style="flex: 1; display: flex; gap: 0.5rem; align-items: center; justify-content: center; flex-wrap: wrap;">';
                     
                     // First button
                     if (currentPage > 1) {
@@ -1973,21 +1990,14 @@ def contracts_list():
                     }
                     html += '</div>';
                     
-                    // Page size selector
-                    html += '<div class="pagination-options" style="display: flex; justify-content: center; align-items: center; padding: 1rem 1.5rem; background: rgba(255, 255, 255, 0.95); border-radius: 8px; margin-top: 1rem; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">' +
-                            '<div class="page-size-selector" style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.875rem; color: #1e293b; font-weight: 600;">' +
-                                '<label for="pageSize">Show:</label>' +
-                                '<select id="pageSize" onchange="changePageSize(this.value)" style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; border-radius: 6px; background: white; color: #1e293b; font-size: 0.875rem; cursor: pointer; font-weight: 600; min-width: 80px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);">';
+                    // Page X of Y on the right side
+                    html += '<span ' + pagesStyle + '>' +
+                                '<i class="fas fa-bookmark"></i> Page ' + currentPage + ' of ' + totalPages +
+                            '</span>';
                     
-                    availableSizes.forEach(size => {
-                        const selected = size === perPage ? 'selected' : '';
-                        html += '<option value="' + size + '" ' + selected + '>' + size + '</option>';
-                    });
+                    html += '</div>';
                     
-                    html += '</select>' +
-                                '<span>per page</span>' +
-                            '</div>' +
-                        '</div>';
+                    html += '</div>';
                     
                     return html;
                 }
