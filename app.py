@@ -1907,10 +1907,10 @@ def contracts_list():
                     const endRecord = Math.min(currentPage * perPage, totalRecords);
                     
                     // Inline styles for consistency
-                    const mainContainerStyle = 'style="display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; background: rgba(255, 255, 255, 0.98); border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);"';
-                    const rowStyle = 'style="display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; padding: 0.75rem 0;"';
+                    const mainContainerStyle = 'style="display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem 1.5rem; background: rgba(255, 255, 255, 0.98); border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);"';
+                    const rowStyle = 'style="display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; padding: 0.5rem 0;"';
                     const summaryStyle = 'style="color: #1e40af; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;"';
-                    const pagesStyle = 'style="color: #1e40af; font-weight: 700; font-size: 0.95rem; background: rgba(30, 64, 175, 0.1); padding: 0.6rem 1.2rem; border-radius: 8px; white-space: nowrap;"';
+                    const pagesStyle = 'style="color: #1e40af; font-weight: 700; font-size: 0.95rem; padding: 0.4rem 1rem; white-space: nowrap;"';
                     const controlsContainerStyle = 'style="display: flex; gap: 0.5rem; align-items: center; justify-content: center; flex-wrap: wrap; flex: 1;"';
                     const btnStyle = 'style="display: inline-flex; align-items: center; justify-content: center; padding: 0.6rem 1rem; border: 1px solid #e2e8f0; background: white; color: #1e40af; text-decoration: none; border-radius: 6px; font-size: 0.875rem; font-weight: 600; transition: all 0.2s ease; min-width: 2.5rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);"';
                     const btnActiveStyle = 'style="display: inline-flex; align-items: center; justify-content: center; padding: 0.6rem 1rem; border: 1px solid #1e40af; background: #1e40af; color: white; text-decoration: none; border-radius: 6px; font-size: 0.875rem; font-weight: 600; min-width: 2.5rem; box-shadow: 0 4px 8px rgba(30, 64, 175, 0.25);"';
@@ -1981,11 +1981,11 @@ def contracts_list():
                     
                     html += '</div>';
                     
-                    // Row 2: Page size selector (centered)
-                    html += '<div style="display: flex; justify-content: center; align-items: center; padding: 0.5rem 0;">' +
+                    // Row 2: Page size selector (centered with compact padding)
+                    html += '<div style="display: flex; justify-content: center; align-items: center; padding: 0.3rem 0;">' +
                             '<div ' + selectorStyle + '>' +
                                 '<label for="pageSize">Show:</label>' +
-                                '<select id="pageSize" onchange="changePageSize(this.value)" style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; border-radius: 6px; background: white; color: #1e293b; font-size: 0.875rem; cursor: pointer; font-weight: 600; min-width: 80px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);">';
+                                '<select id="pageSize" onchange="changePageSize(this.value)" style="padding: 0.4rem 1rem; border: 1px solid #e2e8f0; border-radius: 6px; background: white; color: #1e293b; font-size: 0.875rem; cursor: pointer; font-weight: 600; min-width: 80px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);">';
                     
                     availableSizes.forEach(size => {
                         const selected = size === perPage ? 'selected' : '';
