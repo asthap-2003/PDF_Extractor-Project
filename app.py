@@ -2136,9 +2136,10 @@ def contracts_list():
                 // Store contracts data for search (server-side all_contracts)
                 const allContracts = ''' + json.dumps(contracts_for_json, default=str) + ''';
                 
-                // Pagination settings (server-side se match કરો)
+                // Pagination settings
+                let originalPerPage = ''' + str(per_page) + ''';  // Server default (e.g., 5)
+                let perPage = originalPerPage;  // Start with original
                 let currentPage = 1;
-                let perPage = ''' + str(per_page) + ''';  // Default from server
                 let totalRecords = allContracts.length;
                 let totalPages = Math.ceil(totalRecords / perPage);
                 let filteredContracts = [...allContracts];  // Start with all
@@ -2239,11 +2240,36 @@ def contracts_list():
                     return html;
                 }
                 
-                // Paginated display function (filter પછી call કરો)
+                // Updated displayFilteredContractsPaginated – show all if filtered, paginate if not
                 function displayFilteredContractsPaginated() {
+                    // Check if any filter is active
+                    const isFilterActive = searchInput.value.trim() !== '' || 
+                                           stateSearchSelect.value !== '' || 
+                                           dateFromInput.value !== '' || 
+                                           dateToInput.value !== '';
+                    
+                    // If filtered and active, show ALL results (disable pagination)
+                    if (isFilterActive) {
+                        perPage = filteredContracts.length;  // Set to show all filtered results
+                        currentPage = 1;  // Only one "page"
+                        paginationContainer.style.display = 'none';  // Hide pagination bar
+                    } else {
+                        perPage = originalPerPage;  // Restore original
+                        totalPages = Math.ceil(allContracts.length / perPage);
+                        paginationContainer.style.display = 'block';  // Show pagination
+                    }
+                    
                     const start = (currentPage - 1) * perPage;
                     const end = start + perPage;
                     const pageContracts = filteredContracts.slice(start, end);
+                    
+                    console.log('Display Logic:', {
+                        isFilterActive: isFilterActive,
+                        perPage: perPage,
+                        filteredLength: filteredContracts.length,
+                        showing: pageContracts.length,
+                        paginationVisible: paginationContainer.style.display !== 'none'
+                    });
                     
                     if (pageContracts.length === 0) {
                         tableBody.innerHTML = `
@@ -2256,7 +2282,7 @@ def contracts_list():
                                     </td>
                                 </tr>
                         `;
-                        paginationContainer.innerHTML = generatePaginationHTML(1, 1, perPage, 0);
+                        paginationContainer.style.display = 'none';  // Hide on empty
                         return;
                     }
                     
@@ -2367,10 +2393,24 @@ def contracts_list():
                     });
                     tableBody.innerHTML = html;
                     
-                    // Update pagination based on filtered data
-                    totalRecords = filteredContracts.length;
-                    totalPages = Math.ceil(totalRecords / perPage);
-                    paginationContainer.innerHTML = generatePaginationHTML(currentPage, totalPages, perPage, totalRecords);
+                    // Only update pagination HTML if not filtered
+                    if (!isFilterActive) {
+                        totalRecords = allContracts.length;
+                        totalPages = Math.ceil(totalRecords / perPage);
+                        paginationContainer.innerHTML = generatePaginationHTML(currentPage, totalPages, perPage, totalRecords);
+                    } else {
+                        // Show "Showing all filtered results" message
+                        paginationContainer.innerHTML = `
+                            <div class="pagination-container">
+                                <div class="pagination-info" style="justify-content: center; text-align: center; padding: 1.5rem;">
+                                    <span class="pagination-summary" style="font-size: 1.2rem;">
+                                        <i class="fas fa-filter"></i> Showing all ${filteredContracts.length} filtered results
+                                    </span>
+                                </div>
+                            </div>
+                        `;
+                        paginationContainer.style.display = 'block';  // Show the message
+                    }
                 }
                 
                 // Combined filter function (search + state + date)
@@ -2431,6 +2471,15 @@ def contracts_list():
                     
                     filteredContracts = tempFiltered;
                     currentPage = 1;  // Reset to page 1 on filter
+                    console.log('Filters Applied:', {
+                        totalContracts: allContracts.length,
+                        filteredCount: filteredContracts.length,
+                        searchTerm: searchInput.value,
+                        selectedState: stateSearchSelect.value,
+                        fromDate: dateFromInput.value,
+                        toDate: dateToInput.value,
+                        perPage: perPage
+                    });
                     displayFilteredContractsPaginated();
                 }
                 
@@ -2480,17 +2529,38 @@ def contracts_list():
                 
                 // Pagination functions (global scope માટે)
                 window.changePageSize = function(size) {
-                    perPage = parseInt(size);
-                    totalPages = Math.ceil(filteredContracts.length / perPage);
-                    currentPage = 1;
-                    displayFilteredContractsPaginated();
+                    // Only change if no filter active
+                    if (searchInput.value.trim() === '' && stateSearchSelect.value === '' && 
+                        dateFromInput.value === '' && dateToInput.value === '') {
+                        originalPerPage = parseInt(size);
+                        perPage = originalPerPage;
+                        currentPage = 1;
+                        console.log('Page Size Changed:', {
+                            newSize: perPage,
+                            totalPages: Math.ceil(allContracts.length / perPage)
+                        });
+                        displayFilteredContractsPaginated();
+                    } else {
+                        // If filtered, ignore dropdown change (all results already shown)
+                        console.log('Page size change ignored - filter is active, showing all results');
+                    }
                 };
                 
                 window.changePage = function(page) {
-                    currentPage = page;
-                    displayFilteredContractsPaginated();
-                    // Scroll to top of table
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    // Only if pagination visible (no filter)
+                    if (paginationContainer.style.display !== 'none' && 
+                        searchInput.value.trim() === '' && 
+                        stateSearchSelect.value === '' && 
+                        dateFromInput.value === '' && 
+                        dateToInput.value === '') {
+                        currentPage = page;
+                        console.log('Page Changed:', {
+                            newPage: currentPage,
+                            perPage: perPage
+                        });
+                        displayFilteredContractsPaginated();
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
                 };
                 
                 // Initial load (no filter)
