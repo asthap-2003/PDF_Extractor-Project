@@ -702,6 +702,11 @@ def generate_pagination_html(current_page, total_pages, base_url="?", per_page=5
 
     return html
 
+@app.route('/logo.png')
+def serve_logo():
+    """Serve the GEM logo image"""
+    return send_file('logo.png', mimetype='image/png')
+
 @app.route('/contracts')
 def contracts_list():
     """Display all extracted contracts in a table format with custom pagination"""
@@ -878,7 +883,7 @@ def contracts_list():
                 .header {
                     background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
                     color: white;
-                    padding: 1.5rem;
+                    padding: 6px;
                     text-align: center;
                     position: relative;
                     overflow: hidden;
@@ -903,7 +908,7 @@ def contracts_list():
                 .header h1 {
                     font-size: 2rem;
                     font-weight: 700;
-                    margin-bottom: 1rem;
+                    margin-bottom: 0;
                     letter-spacing: -0.025em;
                 }
 
@@ -1615,7 +1620,12 @@ def contracts_list():
             <div class="container">
                 <div class="header contracts-header">
                     <div class="header-content">
-                        <h1><img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTUiIGhlaWdodD0iNTUiIHZpZXdCb3g9IjAgMCA1NSA1NSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjU1IiBoZWlnaHQ9IjU1IiByeD0iMTIiIGZpbGw9IiMxRDc1RkYiLz4KPHRleHQgeD0iMjcuNSIgeT0iMzMiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5HRU08L3RleHQ+Cjwvc3ZnPgo=" alt="GEM Logo" style="width: 55px; height: 55px; margin-right: 15px; vertical-align: middle;"> GEM Contract Management</h1>
+                        <h1><img src="/logo.png" alt="GEM Logo" style="width: 165px;
+    height: 58px;
+    margin-right: 15px;
+    border: 2px solid black;
+    background: white;
+    vertical-align: middle;"> GEM Contract Management</h1>
                     </div>
                 </div>
                 
