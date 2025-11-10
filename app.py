@@ -1638,9 +1638,9 @@ def contracts_list():
                     <a href="/" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary-color); border-color: var(--primary-dark);">
                         <i class="fas fa-upload"></i> Upload PDF
                     </a>
-                    <a href="/contracts/export" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary-color); border-color: var(--primary-dark);">
+                    <button id="exportBtn" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary-color); border: none; cursor: pointer;">
                         <i class="fas fa-file-excel"></i> Export to Excel
-                    </a>
+                    </button>
                 </div>
                 
                 <!-- Filters Row -->
@@ -2281,6 +2281,45 @@ def contracts_list():
                     applyFilters();
                 });
                 
+                // Export filtered/paginated data to Excel
+                document.getElementById('exportBtn').addEventListener('click', function() {
+                    // Calculate current page contracts (pagination-aware export)
+                    const start = (currentPage - 1) * perPage;
+                    const end = start + perPage;
+                    const dataToExport = filteredContracts.slice(start, end);
+                    
+                    if (dataToExport.length === 0) {
+                        alert('No data to export');
+                        return;
+                    }
+                    
+                    // Extract only contract IDs (much smaller payload)
+                    const contractIds = dataToExport.map(c => c.contract_id);
+                    
+                    console.log('Exporting:', {
+                        totalFiltered: filteredContracts.length,
+                        currentPage: currentPage,
+                        perPage: perPage,
+                        exportingCount: contractIds.length,
+                        exportingIds: contractIds
+                    });
+                    
+                    // Create form and submit
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '/contracts/export';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'contract_ids';
+                    input.value = JSON.stringify(contractIds);
+                    
+                    form.appendChild(input);
+                    document.body.appendChild(form);
+                    form.submit();
+                    document.body.removeChild(form);
+                });
+                
                 // Pagination functions (global scope માટે)
                 window.changePageSize = function(size) {
                     // Allow page size change for both filtered and unfiltered data
@@ -2442,45 +2481,90 @@ def contracts_list():
         return f"Error loading contracts: {str(e)}"
 
         
-@app.route('/contracts/export')
+@app.route('/contracts/export', methods=['GET', 'POST'])
 def export_contracts_excel():
     try:
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor(dictionary=True)
-        cursor.execute(
-            """
-            SELECT 
-                c.contract_id,
-                c.filename,
-                o.type as organisation_type,
-                o.ministry,
-                o.department,
-                o.organisation_name,
-                o.office_zone,
-                s.gem_seller_id,
-                s.company_name,
-                s.contact_no as seller_contact_no,
-                s.email_id as seller_email_id,
-                s.address as seller_address,
-                s.msme_registration_number,
-                s.gstin as seller_gstin,
-                b.designation,
-                b.contact_no as buyer_contact_no,
-                b.email_id as buyer_email_id,
-                b.gstin as buyer_gstin,
-                b.address as buyer_address
-            FROM contracts c
-            LEFT JOIN organisations o ON c.contract_id = o.contract_id
-            LEFT JOIN sellers s ON c.contract_id = s.contract_id
-            LEFT JOIN buyers b ON c.contract_id = b.contract_id
-            WHERE (o.organisation_name IS NOT NULL AND o.organisation_name != '') 
-               OR (s.company_name IS NOT NULL AND s.company_name != '')
-            ORDER BY c.upload_time DESC, c.contract_id DESC
-            """
-        )
-        rows = cursor.fetchall()
-        cursor.close()
-        conn.close()
+        
+        # Check if contract IDs are coming from POST (filtered data)
+        if request.method == 'POST':
+            contract_ids_json = request.form.get('contract_ids')
+            if contract_ids_json:
+                contract_ids = json.loads(contract_ids_json)
+                if contract_ids:
+                    # Build IN clause for SQL
+                    placeholders = ','.join(['%s'] * len(contract_ids))
+                    query = f"""
+                        SELECT 
+                            c.contract_id,
+                            c.filename,
+                            o.type as organisation_type,
+                            o.ministry,
+                            o.department,
+                            o.organisation_name,
+                            o.office_zone,
+                            s.gem_seller_id,
+                            s.company_name,
+                            s.contact_no as seller_contact_no,
+                            s.email_id as seller_email_id,
+                            s.address as seller_address,
+                            s.msme_registration_number,
+                            s.gstin as seller_gstin,
+                            b.designation,
+                            b.contact_no as buyer_contact_no,
+                            b.email_id as buyer_email_id,
+                            b.gstin as buyer_gstin,
+                            b.address as buyer_address
+                        FROM contracts c
+                        LEFT JOIN organisations o ON c.contract_id = o.contract_id
+                        LEFT JOIN sellers s ON c.contract_id = s.contract_id
+                        LEFT JOIN buyers b ON c.contract_id = b.contract_id
+                        WHERE c.contract_id IN ({placeholders})
+                        ORDER BY c.upload_time DESC, c.contract_id DESC
+                    """
+                    cursor.execute(query, contract_ids)
+                    rows = cursor.fetchall()
+                else:
+                    rows = []
+            else:
+                rows = []
+        else:
+            # GET request - export all data (fallback)
+            cursor.execute(
+                """
+                SELECT 
+                    c.contract_id,
+                    c.filename,
+                    o.type as organisation_type,
+                    o.ministry,
+                    o.department,
+                    o.organisation_name,
+                    o.office_zone,
+                    s.gem_seller_id,
+                    s.company_name,
+                    s.contact_no as seller_contact_no,
+                    s.email_id as seller_email_id,
+                    s.address as seller_address,
+                    s.msme_registration_number,
+                    s.gstin as seller_gstin,
+                    b.designation,
+                    b.contact_no as buyer_contact_no,
+                    b.email_id as buyer_email_id,
+                    b.gstin as buyer_gstin,
+                    b.address as buyer_address
+                FROM contracts c
+                LEFT JOIN organisations o ON c.contract_id = o.contract_id
+                LEFT JOIN sellers s ON c.contract_id = s.contract_id
+                LEFT JOIN buyers b ON c.contract_id = b.contract_id
+                WHERE (o.organisation_name IS NOT NULL AND o.organisation_name != '') 
+                   OR (s.company_name IS NOT NULL AND s.company_name != '')
+                ORDER BY c.upload_time DESC, c.contract_id DESC
+                """
+            )
+            rows = cursor.fetchall()
+            cursor.close()
+            conn.close()
 
         # Build XLSX in-memory with styled columns and multi-line cells
         mem = io.BytesIO()
