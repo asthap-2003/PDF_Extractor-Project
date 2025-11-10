@@ -1713,9 +1713,10 @@ def contracts_list():
                             </button>
                         </div>
 
-                        <!-- Clear All Dates Button -->
-                        <button id="clearDateBtn" class="clear-date-btn" title="Clear all dates" style="flex: 0 0 auto; width: 38px; height: 38px; background: #1e40af; color: white; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; transition: background 0.2s ease;">
-                            <i class="fas fa-times"></i>
+                        <!-- Clear All Filters Button -->
+                        <button id="clearAllFiltersBtn" class="clear-all-filters-btn" title="Clear all filters" style="flex: 0 0 auto; height: 38px; padding: 0 1rem; background: #1e40af; color: white; border: none; border-radius: 6px; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 0.875rem; font-weight: 600; transition: all 0.2s ease; gap: 0.5rem;">
+                            <i class="fas fa-times-circle"></i>
+                            <span>Clear All</span>
                         </button>
                     </div>
                 </div>
@@ -1890,7 +1891,7 @@ def contracts_list():
                 const clearStateSearchBtn = document.getElementById('clearStateSearchBtn');
                 const dateFromInput = document.getElementById('dateFrom');
                 const dateToInput = document.getElementById('dateTo');
-                const clearDateBtn = document.getElementById('clearDateBtn');
+                const clearAllFiltersBtn = document.getElementById('clearAllFiltersBtn');
                 const tableBody = document.querySelector('tbody');
                 const paginationContainer = document.getElementById('pagination-container');
                 
@@ -2215,82 +2216,52 @@ def contracts_list():
                     displayFilteredContractsPaginated();
                 }
                 
+                // Function to check if any filter is active and show/hide Clear All button
+                function updateClearAllButton() {
+                    const hasFilters = searchInput.value.trim() !== '' || 
+                                      stateSearchSelect.value !== '' || 
+                                      dateFromInput.value !== '' || 
+                                      dateToInput.value !== '';
+                    
+                    if (hasFilters) {
+                        clearAllFiltersBtn.style.display = 'flex';
+                    } else {
+                        clearAllFiltersBtn.style.display = 'none';
+                    }
+                }
+                
                 // Event listeners (debounced for search)
                 let searchTimeout;
                 searchInput.addEventListener('input', () => {
                     clearTimeout(searchTimeout);
-                    searchTimeout = setTimeout(applyFilters, 300);
-                    if (searchInput.value.trim() !== '') {
-                        clearSearchBtn.classList.add('show');
-                    } else {
-                        clearSearchBtn.classList.remove('show');
-                    }
+                    searchTimeout = setTimeout(() => {
+                        applyFilters();
+                        updateClearAllButton();
+                    }, 300);
                 });
                 
                 stateSearchSelect.addEventListener('change', () => {
-                    if (stateSearchSelect.value.trim() !== '') {
-                        clearStateSearchBtn.classList.add('show');
-                    } else {
-                        clearStateSearchBtn.classList.remove('show');
-                    }
                     applyFilters();
+                    updateClearAllButton();
                 });
                 
-                dateFromInput.addEventListener('change', applyFilters);
-                dateToInput.addEventListener('change', applyFilters);
-                
-                // Clear buttons
-                clearSearchBtn.addEventListener('click', () => {
-                    searchInput.value = '';
-                    clearSearchBtn.classList.remove('show');
-                    applyFilters();
-                });
-                
-                clearStateSearchBtn.addEventListener('click', () => {
-                    stateSearchSelect.value = '';
-                    clearStateSearchBtn.classList.remove('show');
-                    applyFilters();
-                });
-                
-                // Individual date clear buttons
-                const clearDateFromBtn = document.getElementById('clearDateFromBtn');
-                const clearDateToBtn = document.getElementById('clearDateToBtn');
-                
-                if (clearDateFromBtn) {
-                    clearDateFromBtn.addEventListener('click', () => {
-                        dateFromInput.value = '';
-                        clearDateFromBtn.style.display = 'none';
-                        applyFilters();
-                    });
-                }
-                
-                if (clearDateToBtn) {
-                    clearDateToBtn.addEventListener('click', () => {
-                        dateToInput.value = '';
-                        clearDateToBtn.style.display = 'none';
-                        applyFilters();
-                    });
-                }
-                
-                // Show/hide individual date clear buttons
                 dateFromInput.addEventListener('change', () => {
-                    if (clearDateFromBtn) {
-                        clearDateFromBtn.style.display = dateFromInput.value ? 'block' : 'none';
-                    }
+                    applyFilters();
+                    updateClearAllButton();
                 });
                 
                 dateToInput.addEventListener('change', () => {
-                    if (clearDateToBtn) {
-                        clearDateToBtn.style.display = dateToInput.value ? 'block' : 'none';
-                    }
+                    applyFilters();
+                    updateClearAllButton();
                 });
                 
-                clearDateBtn.addEventListener('click', () => {
+                // Clear All Filters button
+                clearAllFiltersBtn.addEventListener('click', () => {
+                    searchInput.value = '';
+                    stateSearchSelect.value = '';
                     dateFromInput.value = '';
                     dateToInput.value = '';
-                    if (clearDateFromBtn) clearDateFromBtn.style.display = 'none';
-                    if (clearDateToBtn) clearDateToBtn.style.display = 'none';
-                    clearDateBtn.classList.remove('show');
+                    clearAllFiltersBtn.style.display = 'none';
                     applyFilters();
                 });
                 
