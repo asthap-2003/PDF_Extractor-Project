@@ -802,11 +802,16 @@ def contracts_list():
         conn.close()
         
         # Convert datetime objects to strings for JSON serialization
+        # Use all_contracts instead of contracts for client-side pagination
         contracts_for_json = []
-        for contract in contracts:
+        for contract in all_contracts:
             contract_dict = dict(contract)
             if contract_dict.get('upload_time'):
                 contract_dict['upload_time'] = contract_dict['upload_time'].strftime('%Y-%m-%d %H:%M:%S')
+            if contract_dict.get('date'):
+                # Ensure date is also properly formatted
+                if hasattr(contract_dict['date'], 'strftime'):
+                    contract_dict['date'] = contract_dict['date'].strftime('%Y-%m-%d')
             contracts_for_json.append(contract_dict)
         
         # Generate HTML for contracts table with enhanced professional design
@@ -2123,137 +2128,124 @@ def contracts_list():
         </div>
         
         <!-- Attractive Pagination -->
+        <div id="pagination-container">
         ''' + pagination_html + '''
+        </div>
         
         <script>
-                // Store contracts data for search
-                 const allContracts = ''' + json.dumps(contracts_for_json, default=str) + ''';
-                console.log(allContracts)
+                // Store contracts data for search (server-side all_contracts)
+                const allContracts = ''' + json.dumps(contracts_for_json, default=str) + ''';
                 
-                // Page size change function
-                function changePageSize(newSize) {
-                    const urlParams = new URLSearchParams(window.location.search);
-                    urlParams.set('per_page', newSize);
-                    urlParams.delete('page'); // Reset to first page when changing page size
-                    window.location.href = window.location.pathname + '?' + urlParams.toString();
-                }
+                // Pagination settings (server-side se match કરો)
+                let currentPage = 1;
+                let perPage = ''' + str(per_page) + ''';  // Default from server
+                let totalRecords = allContracts.length;
+                let totalPages = Math.ceil(totalRecords / perPage);
+                let filteredContracts = [...allContracts];  // Start with all
                 
-                 // DOM elements
+                // DOM elements
                 const searchInput = document.getElementById('searchInput');
                 const clearSearchBtn = document.getElementById('clearSearchBtn');
                 const stateSearchSelect = document.getElementById('stateSearchSelect');
                 const clearStateSearchBtn = document.getElementById('clearStateSearchBtn');
-                const tableBody = document.querySelector('tbody');
-                // Date range filter functionality
                 const dateFromInput = document.getElementById('dateFrom');
                 const dateToInput = document.getElementById('dateTo');
                 const clearDateBtn = document.getElementById('clearDateBtn');
-
-                function filterByDateRange() {
+                const tableBody = document.querySelector('tbody');
+                const paginationContainer = document.getElementById('pagination-container');
                 
-                    const fromDate = dateFromInput.value ? new Date(dateFromInput.value) : null;
-                    const toDate = dateToInput.value ? new Date(dateToInput.value) : null;
-                    console.log(fromDate, toDate);
-
-                    if (!fromDate && !toDate) {
-                        clearDateBtn.classList.remove('show');
-                        displayAllContracts();
-                        return;
+                // JS version of generate_pagination_html (server-side logic copy)
+                function generatePaginationHTML(currentPage, totalPages, perPage, totalRecords, availableSizes = [5, 10, 50, 100]) {
+                    const startRecord = (currentPage - 1) * perPage + 1;
+                    const endRecord = Math.min(currentPage * perPage, totalRecords);
+                    
+                    let html = `
+                        <div class="pagination-container">
+                            <div class="pagination-info">
+                                <span class="pagination-summary">
+                                    <i class="fas fa-info-circle"></i>
+                                    Showing ${startRecord} to ${endRecord} of ${totalRecords} records
+                                </span>
+                                <span class="pagination-pages">
+                                    Page ${currentPage} of ${totalPages}
+                                </span>
+                            </div>
+                           
+                            <div class="pagination-controls">
+                    `;
+                    
+                    // First button
+                    if (currentPage > 1) {
+                        html += `<a href="#" onclick="changePage(1); return false;" class="pagination-btn" title="First Page"><i class="fas fa-angle-double-left"></i></a>`;
+                    } else {
+                        html += '<span class="pagination-btn disabled" title="First Page"><i class="fas fa-angle-double-left"></i></span>';
                     }
-
-                    console.log('Filtering by date range:', fromDate, toDate);
-
-                    clearDateBtn.classList.add('show');
-
-                    const filteredContracts = allContracts.filter(contract => {
-                        if (!contract.date) return false; // skip if no date
-                        console.log('Contract Date:', contract.date);
-
-                        const contractDate = new Date(contract.date); // assuming contract.date is string like "2025-09-10"
-
-                        if (fromDate && contractDate < fromDate) return false;
-                        if (toDate && contractDate > toDate) return false;
-
-                        return true;
-                    });
-                    console.log('Filtered Contracts:', filteredContracts);
-
-                    displayFilteredContracts(filteredContracts);
-                }
-
-                // Attach event listeners for date change
-                dateFromInput.addEventListener('change', filterByDateRange);
-                dateToInput.addEventListener('change', filterByDateRange);
-
-                // Clear date filter
-                clearDateBtn.addEventListener('click', function () {
-                    dateFromInput.value = '';
-                    dateToInput.value = '';
-                    clearDateBtn.classList.remove('show');
-                    displayAllContracts();
-                });
-
-
-                
-                // Search functionality with debouncing
-                let searchTimeout;
-                searchInput.addEventListener('input', function() {
-                    clearTimeout(searchTimeout);
-                    searchTimeout = setTimeout(() => {
-                        const searchTerm = this.value.toLowerCase().trim();
-                        
-                        if (searchTerm === '') {
-                            displayAllContracts();
-                            return;
+                    // Previous button
+                    if (currentPage > 1) {
+                        html += `<a href="#" onclick="changePage(${currentPage - 1}); return false;" class="pagination-btn" title="Previous Page"><i class="fas fa-chevron-left"></i></a>`;
+                    } else {
+                        html += '<span class="pagination-btn disabled" title="Previous Page"><i class="fas fa-chevron-left"></i></span>';
+                    }
+                    // Page numbers (max 5)
+                    let startPage = Math.max(1, currentPage - 2);
+                    let endPage = Math.min(totalPages, currentPage + 2);
+                    if (startPage > 1) {
+                        html += `<a href="#" onclick="changePage(1); return false;" class="pagination-btn">1</a>`;
+                        if (startPage > 2) html += '<span class="pagination-ellipsis">...</span>';
+                    }
+                    for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
+                        if (pageNum === currentPage) {
+                            html += `<span class="pagination-btn active">${pageNum}</span>`;
+                        } else {
+                            html += `<a href="#" onclick="changePage(${pageNum}); return false;" class="pagination-btn">${pageNum}</a>`;
                         }
-                        
-                        // Search through all contract data
-                        const filteredContracts = allContracts.filter(contract => {
-                            // Search in contract ID
-                            if (contract.contract_id.toLowerCase().includes(searchTerm)) return true;
-                            
-                            // Search in filename
-                            if (contract.filename && contract.filename.toLowerCase().includes(searchTerm)) return true;
-                            
-                            // Search in organization details
-                            if (contract.organisation_name && contract.organisation_name.toLowerCase().includes(searchTerm)) return true;
-                            if (contract.department && contract.department.toLowerCase().includes(searchTerm)) return true;
-                            if (contract.type && contract.type.toLowerCase().includes(searchTerm)) return true;
-                            if (contract.ministry && contract.ministry.toLowerCase().includes(searchTerm)) return true;
-                            if (contract.office_zone && contract.office_zone.toLowerCase().includes(searchTerm)) return true;
-                            
-                            // Search in seller details
-                            if (contract.company_name && contract.company_name.toLowerCase().includes(searchTerm)) return true;
-                            if (contract.gem_seller_id && contract.gem_seller_id.toLowerCase().includes(searchTerm)) return true;
-                            if (contract.seller_contact_no && contract.seller_contact_no.toLowerCase().includes(searchTerm)) return true;
-                            if (contract.seller_email_id && contract.seller_email_id.toLowerCase().includes(searchTerm)) return true;
-                            if (contract.seller_address && contract.seller_address.toLowerCase().includes(searchTerm)) return true;
-                            if (contract.msme_registration_number && contract.msme_registration_number.toLowerCase().includes(searchTerm)) return true;
-                            if (contract.seller_gstin && contract.seller_gstin.toLowerCase().includes(searchTerm)) return true;
-                            
-                            // Search in buyer details
-                            if (contract.designation && contract.designation.toLowerCase().includes(searchTerm)) return true;
-                            if (contract.buyer_contact_no && contract.buyer_contact_no.toLowerCase().includes(searchTerm)) return true;
-                            if (contract.email_id && contract.email_id.toLowerCase().includes(searchTerm)) return true;
-                            if (contract.buyer_gstin && contract.buyer_gstin.toLowerCase().includes(searchTerm)) return true;
-                            if (contract.buyer_address && contract.buyer_address.toLowerCase().includes(searchTerm)) return true;
-                            
-                            // Search in product names
-                            if (contract.product_names && contract.product_names.toLowerCase().includes(searchTerm)) return true;
-                            if (contract.category_names && contract.category_names.toLowerCase().includes(searchTerm)) return true;
-                            
-                            // Search in text_format (complete PDF text)
-                            if (contract.text_format && contract.text_format.toLowerCase().includes(searchTerm)) return true;
-                            
-                            return false;
-                        });
-                        
-                        displayFilteredContracts(filteredContracts);
-                    }, 300);
-                });
+                    }
+                    if (endPage < totalPages) {
+                        if (endPage < totalPages - 1) html += '<span class="pagination-ellipsis">...</span>';
+                        html += `<a href="#" onclick="changePage(${totalPages}); return false;" class="pagination-btn">${totalPages}</a>`;
+                    }
+                    // Next button
+                    if (currentPage < totalPages) {
+                        html += `<a href="#" onclick="changePage(${currentPage + 1}); return false;" class="pagination-btn" title="Next Page"><i class="fas fa-chevron-right"></i></a>`;
+                    } else {
+                        html += '<span class="pagination-btn disabled" title="Next Page"><i class="fas fa-chevron-right"></i></span>';
+                    }
+                    // Last button
+                    if (currentPage < totalPages) {
+                        html += `<a href="#" onclick="changePage(${totalPages}); return false;" class="pagination-btn" title="Last Page"><i class="fas fa-angle-double-right"></i></a>`;
+                    } else {
+                        html += '<span class="pagination-btn disabled" title="Last Page"><i class="fas fa-angle-double-right"></i></span>';
+                    }
+                    html += '</div>';
+                    
+                    // Page size selector
+                    html += `
+                        <div class="pagination-options">
+                            <div class="page-size-selector">
+                                <label for="pageSize">Show:</label>
+                                <select id="pageSize" onchange="changePageSize(this.value)">
+                    `;
+                    availableSizes.forEach(size => {
+                        const selected = size === perPage ? 'selected' : '';
+                        html += `<option value="${size}" ${selected}>${size}</option>`;
+                    });
+                    html += `
+                                </select>
+                                <span>per page</span>
+                            </div>
+                        </div>
+                        </div>
+                    `;
+                    return html;
+                }
                 
-                function displayFilteredContracts(contracts) {
-                    if (contracts.length === 0) {
+                // Paginated display function (filter પછી call કરો)
+                function displayFilteredContractsPaginated() {
+                    const start = (currentPage - 1) * perPage;
+                    const end = start + perPage;
+                    const pageContracts = filteredContracts.slice(start, end);
+                    
+                    if (pageContracts.length === 0) {
                         tableBody.innerHTML = `
                             <tr>
                                 <td colspan="6">
@@ -2262,175 +2254,247 @@ def contracts_list():
                                         <h3>No contracts found</h3>
                                         <p>No contracts match your search criteria.</p>
                                     </td>
-                            </tr>
+                                </tr>
                         `;
+                        paginationContainer.innerHTML = generatePaginationHTML(1, 1, perPage, 0);
                         return;
                     }
                     
                     let html = '';
-                    contracts.forEach((contract, index) => {
+                    pageContracts.forEach((contract, index) => {
+                        const globalIndex = start + index + 1;  // Global serial number for filtered data
                         html += `
                             <tr>
                                 <td style="text-align: center; font-weight: bold;">
-                                    <div style="font-size: 1.1em; color: #495057;">${index + 1}</div>
+                                    <div style="font-size: 1.1em; color: #495057;">${globalIndex}</div>
                                 </td>
                                 <td>
-                                        <div class="data-section">
-                                            <div class="section-title">
-                                                <i class="fas fa-building"></i> Organization
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>Type:</strong> ${contract.type || 'N/A'}
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>Ministry:</strong> ${contract.ministry || 'N/A'}
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>Department:</strong> ${contract.department || 'N/A'}
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>Organization:</strong> ${contract.organisation_name || 'N/A'}
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>Office Zone:</strong> ${contract.office_zone || 'N/A'}
-                                            </div>
+                                    <div class="data-section">
+                                        <div class="section-title">
+                                            <i class="fas fa-building"></i> Organization
                                         </div>
-                                    </td>
-                                    <td>
-                                        <div class="data-section">
-                                            <div class="section-title">
-                                                <i class="fas fa-store"></i> Seller
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>Company:</strong> ${contract.company_name || 'N/A'}
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>Seller ID:</strong> ${contract.gem_seller_id || 'N/A'}
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>Contact:</strong> ${contract.seller_contact_no || 'N/A'}
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>Email:</strong> ${contract.seller_email_id || 'N/A'}
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>Address:</strong> ${contract.seller_address || 'N/A'}
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>MSME:</strong> ${contract.msme_registration_number || 'N/A'}
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>GSTIN:</strong> ${contract.seller_gstin || 'N/A'}
-                                            </div>
+                                        <div class="data-item">
+                                            <strong>Type:</strong> ${contract.type || 'N/A'}
                                         </div>
-                                    </td>
-                                    <td>
-                                        <div class="data-section">
-                                            <div class="section-title">
-                                                <i class="fas fa-user"></i> Buyer
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>Designation:</strong> ${contract.designation || 'N/A'}
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>Contact:</strong> ${contract.buyer_contact_no || 'N/A'}
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>Email:</strong> ${contract.email_id || 'N/A'}
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>GSTIN:</strong> ${contract.buyer_gstin || 'N/A'}
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>Address:</strong> ${contract.buyer_address || 'N/A'}
-                                            </div>
+                                        <div class="data-item">
+                                            <strong>Ministry:</strong> ${contract.ministry || 'N/A'}
                                         </div>
-                                    </td>
-                                    <td>
-                                        <div class="action-buttons">
-                                            <a href="/products/${contract.contract_id}" class="btn btn-sm btn-info">
-                                                <i class="fas fa-box"></i> Products
-                                            </a>
+                                        <div class="data-item">
+                                            <strong>Department:</strong> ${contract.department || 'N/A'}
                                         </div>
-                                        <div class="data-section">
-                                            <div class="section-title">
-                                                <i class="fas fa-rupee-sign"></i> Value
-                                            </div>
-                                            <div class="data-item">
-                                                <strong>Total Value:</strong> ₹${contract.total_order_value || 'N/A'}
-                                            </div>
+                                        <div class="data-item">
+                                            <strong>Organization:</strong> ${contract.organisation_name || 'N/A'}
                                         </div>
-                                    </td>
-                                    <td>
-                                        <div class="action-buttons">
-                                            <!-- <a href="/details/${contract.contract_id}" class="btn btn-sm btn-info">
-                                                <i class="fas fa-eye"></i> Details
-                                            </a> -->
-                                            <a href="/view/${contract.contract_id}" class="btn btn-sm btn-info" target="_blank">
-                                                <i class="fas fa-file-pdf"></i> View PDF
-                                            </a>
-                                            <!-- <a href="/download/${contract.contract_id}" class="btn btn-sm btn-info">
-                                                <i class="fas fa-download"></i> Download
-                                            </a> -->
+                                        <div class="data-item">
+                                            <strong>Office Zone:</strong> ${contract.office_zone || 'N/A'}
                                         </div>
-                                    </td>
-                                </tr>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="data-section">
+                                        <div class="section-title">
+                                            <i class="fas fa-store"></i> Seller
+                                        </div>
+                                        <div class="data-item">
+                                            <strong>Company:</strong> ${contract.company_name || 'N/A'}
+                                        </div>
+                                        <div class="data-item">
+                                            <strong>Seller ID:</strong> ${contract.gem_seller_id || 'N/A'}
+                                        </div>
+                                        <div class="data-item">
+                                            <strong>Contact:</strong> ${contract.seller_contact_no || 'N/A'}
+                                        </div>
+                                        <div class="data-item">
+                                            <strong>Email:</strong> ${contract.seller_email_id || 'N/A'}
+                                        </div>
+                                        <div class="data-item">
+                                            <strong>Address:</strong> ${contract.seller_address || 'N/A'}
+                                        </div>
+                                        <div class="data-item">
+                                            <strong>MSME:</strong> ${contract.msme_registration_number || 'N/A'}
+                                        </div>
+                                        <div class="data-item">
+                                            <strong>GSTIN:</strong> ${contract.seller_gstin || 'N/A'}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="data-section">
+                                        <div class="section-title">
+                                            <i class="fas fa-user"></i> Buyer
+                                        </div>
+                                        <div class="data-item">
+                                            <strong>Designation:</strong> ${contract.designation || 'N/A'}
+                                        </div>
+                                        <div class="data-item">
+                                            <strong>Contact:</strong> ${contract.buyer_contact_no || 'N/A'}
+                                        </div>
+                                        <div class="data-item">
+                                            <strong>Email:</strong> ${contract.email_id || 'N/A'}
+                                        </div>
+                                        <div class="data-item">
+                                            <strong>GSTIN:</strong> ${contract.buyer_gstin || 'N/A'}
+                                        </div>
+                                        <div class="data-item">
+                                            <strong>Address:</strong> ${contract.buyer_address || 'N/A'}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="/products/${contract.contract_id}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-box"></i> Products
+                                        </a>
+                                    </div>
+                                    <div class="data-section">
+                                        <div class="section-title">
+                                            <i class="fas fa-rupee-sign"></i> Value
+                                        </div>
+                                        <div class="data-item">
+                                            <strong>Total Value:</strong> ₹${contract.total_order_value || 'N/A'}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="/view/${contract.contract_id}" class="btn btn-sm btn-info" target="_blank">
+                                            <i class="fas fa-file-pdf"></i> View PDF
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
                         `;
                     });
                     tableBody.innerHTML = html;
+                    
+                    // Update pagination based on filtered data
+                    totalRecords = filteredContracts.length;
+                    totalPages = Math.ceil(totalRecords / perPage);
+                    paginationContainer.innerHTML = generatePaginationHTML(currentPage, totalPages, perPage, totalRecords);
                 }
                 
-                function displayAllContracts() {
-                    displayFilteredContracts(allContracts);
+                // Combined filter function (search + state + date)
+                function applyFilters() {
+                    let tempFiltered = [...allContracts];
+                    
+                    // Search filter
+                    const searchTerm = searchInput.value.toLowerCase().trim();
+                    if (searchTerm) {
+                        tempFiltered = tempFiltered.filter(contract => {
+                            // તમારા existing search logic (contract_id, filename, org, seller, buyer, products, text_format)
+                            if (contract.contract_id.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.filename && contract.filename.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.organisation_name && contract.organisation_name.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.department && contract.department.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.type && contract.type.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.ministry && contract.ministry.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.office_zone && contract.office_zone.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.company_name && contract.company_name.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.gem_seller_id && contract.gem_seller_id.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.seller_contact_no && contract.seller_contact_no.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.seller_email_id && contract.seller_email_id.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.seller_address && contract.seller_address.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.msme_registration_number && contract.msme_registration_number.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.seller_gstin && contract.seller_gstin.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.designation && contract.designation.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.buyer_contact_no && contract.buyer_contact_no.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.email_id && contract.email_id.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.buyer_gstin && contract.buyer_gstin.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.buyer_address && contract.buyer_address.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.product_names && contract.product_names.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.category_names && contract.category_names.toLowerCase().includes(searchTerm)) return true;
+                            if (contract.text_format && contract.text_format.toLowerCase().includes(searchTerm)) return true;
+                            return false;
+                        });
+                    }
+                    
+                    // State filter (seller_addressમાં)
+                    const selectedState = stateSearchSelect.value.toLowerCase().trim();
+                    if (selectedState) {
+                        tempFiltered = tempFiltered.filter(contract => 
+                            contract.seller_address && contract.seller_address.toLowerCase().includes(selectedState)
+                        );
+                    }
+                    
+                    // Date filter
+                    const fromDate = dateFromInput.value ? new Date(dateFromInput.value) : null;
+                    const toDate = dateToInput.value ? new Date(dateToInput.value) : null;
+                    if (fromDate || toDate) {
+                        tempFiltered = tempFiltered.filter(contract => {
+                            if (!contract.date) return false;
+                            const contractDate = new Date(contract.date);
+                            if (fromDate && contractDate < fromDate) return false;
+                            if (toDate && contractDate > toDate) return false;
+                            return true;
+                        });
+                    }
+                    
+                    filteredContracts = tempFiltered;
+                    currentPage = 1;  // Reset to page 1 on filter
+                    displayFilteredContractsPaginated();
                 }
                 
-                clearSearchBtn.addEventListener('click', function() {
-                    searchInput.value = '';
-                     clearSearchBtn.classList.remove('show');
-                    displayAllContracts();
-                });
-
-
-                   // Show/hide clear button for search input
-                searchInput.addEventListener('input', function() {
-                    if (this.value.trim() !== '') {
+                // Event listeners (debounced for search)
+                let searchTimeout;
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(applyFilters, 300);
+                    if (searchInput.value.trim() !== '') {
                         clearSearchBtn.classList.add('show');
                     } else {
                         clearSearchBtn.classList.remove('show');
                     }
                 });
-
-                // State search functionality
-                stateSearchSelect.addEventListener('change', function() {
-                    const selectedState = this.value.toLowerCase().trim();
-                    
-                    if (selectedState === '') {
+                
+                stateSearchSelect.addEventListener('change', () => {
+                    if (stateSearchSelect.value.trim() !== '') {
+                        clearStateSearchBtn.classList.add('show');
+                    } else {
                         clearStateSearchBtn.classList.remove('show');
-                        displayAllContracts();
-                        return;
                     }
-                    
-                    clearStateSearchBtn.classList.add('show');
-                    
-                    // Search for contracts containing the selected state ONLY in seller address
-                    const filteredContracts = allContracts.filter(contract => {
-                        if (contract.seller_address && contract.seller_address.toLowerCase().includes(selectedState)) {
-                            return true;
-                        }
-                        return false;
-                    });
-                    
-                    displayFilteredContracts(filteredContracts);
-                });
-
-                // Clear state search
-                clearStateSearchBtn.addEventListener('click', function() {
-                    stateSearchSelect.value = '';
-                    clearStateSearchBtn.classList.remove('show');
-                    displayAllContracts();
+                    applyFilters();
                 });
                 
-
+                dateFromInput.addEventListener('change', applyFilters);
+                dateToInput.addEventListener('change', applyFilters);
+                
+                // Clear buttons
+                clearSearchBtn.addEventListener('click', () => {
+                    searchInput.value = '';
+                    clearSearchBtn.classList.remove('show');
+                    applyFilters();
+                });
+                
+                clearStateSearchBtn.addEventListener('click', () => {
+                    stateSearchSelect.value = '';
+                    clearStateSearchBtn.classList.remove('show');
+                    applyFilters();
+                });
+                
+                clearDateBtn.addEventListener('click', () => {
+                    dateFromInput.value = '';
+                    dateToInput.value = '';
+                    clearDateBtn.classList.remove('show');
+                    applyFilters();
+                });
+                
+                // Pagination functions (global scope માટે)
+                window.changePageSize = function(size) {
+                    perPage = parseInt(size);
+                    totalPages = Math.ceil(filteredContracts.length / perPage);
+                    currentPage = 1;
+                    displayFilteredContractsPaginated();
+                };
+                
+                window.changePage = function(page) {
+                    currentPage = page;
+                    displayFilteredContractsPaginated();
+                    // Scroll to top of table
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                };
+                
+                // Initial load (no filter)
+                displayFilteredContractsPaginated();
                 
                 // Add loading animation for buttons
                 document.addEventListener('click', function(e) {
@@ -2438,7 +2502,6 @@ def contracts_list():
                         const originalText = e.target.innerHTML;
                         e.target.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
                         e.target.style.pointerEvents = 'none';
-                        
                         setTimeout(() => {
                             e.target.innerHTML = originalText;
                             e.target.style.pointerEvents = 'auto';
