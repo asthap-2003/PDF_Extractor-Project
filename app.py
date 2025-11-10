@@ -1638,7 +1638,7 @@ def contracts_list():
                     <a href="/" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary-color); border-color: var(--primary-dark);">
                         <i class="fas fa-upload"></i> Upload PDF
                     </a>
-                    <button id="exportBtn" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.875rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary-color); border: none; cursor: pointer;">
+                    <button id="exportBtn" class="btn btn-primary" style="padding: 11px 1rem; font-size: 0.875rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary-color); border: none; cursor: pointer;">
                         <i class="fas fa-file-excel"></i> Export to Excel
                     </button>
                 </div>
