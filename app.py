@@ -1094,11 +1094,13 @@ def contracts_list():
                     background: var(--surface-color);
                     border-radius: 0;
                     box-shadow: var(--shadow-md);
-                    overflow: auto;
+                    overflow-x: hidden;
+                    overflow-y: visible;
                     border: 1px solid var(--border-color);
                     margin-bottom: 2rem;
                     margin-top: 1rem;
                     width: 100%;
+                    max-width: 100%;
                 }
 
                 .contracts-header {
@@ -1109,24 +1111,34 @@ def contracts_list():
                 table {
                     width: 100%;
                     border-collapse: collapse;
-                    min-width: 1200px;
+                    table-layout: fixed;
                 }
+
+                /* Column widths - optimized to fit screen without min-width */
+                th:nth-child(1), td:nth-child(1) { width: 3%; }      /* ID - નાનો serial number */
+                th:nth-child(2), td:nth-child(2) { width: 24%; }    /* Organization - વધારો */
+                th:nth-child(3), td:nth-child(3) { width: 28%; }    /* Seller - સૌથી વધુ data */
+                th:nth-child(4), td:nth-child(4) { width: 22%; }    /* Buyer */
+                th:nth-child(5), td:nth-child(5) { width: 12%; }    /* Products - નાની કરી */
+                th:nth-child(6), td:nth-child(6) { width: 11%; }    /* Actions - નાની કરી */
 
                 th {
                     background: var(--primary-color);
                     color: white;
-                    padding: 1rem 1.5rem;
+                    padding: 0.75rem 0.5rem;
                     text-align: left;
                     font-weight: 600;
-                    font-size: 0.875rem;
+                    font-size: 0.85rem;
                     border-bottom: 1px solid var(--border-color);
                     white-space: nowrap;
                 }
 
                 td {
-                    padding: 1rem 1.5rem;
+                    padding: 0.75rem 0.5rem;
                     border-bottom: 1px solid var(--border-color);
                     vertical-align: top;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
                 }
 
                 tr:nth-child(even) {
@@ -1171,10 +1183,10 @@ def contracts_list():
                 }
 
                 .data-section {
-                    margin-bottom: 1rem;
-                    padding: 0.75rem;
+                    margin-bottom: 0.6rem;
+                    padding: 0.6rem;
                     background: rgba(248, 250, 252, 0.5);
-                    border-left: 3px solid var(--primary-color);
+                    border-left: 2px solid var(--primary-color);
                 }
 
                 .data-section:last-child {
@@ -1182,63 +1194,61 @@ def contracts_list():
                 }
 
                 .section-title {
-                      font-weight: 900;
+                      font-weight: 800;
                       color: var(--primary-color);
-                      margin-bottom: 0.5rem;
+                      margin-bottom: 0.4rem;
                       display: flex;
                       align-items: center;
-                      gap: 0.25rem;
-                      font-size: 16px;
+                      gap: 0.3rem;
+                      font-size: 0.85rem;
+                      white-space: nowrap;
+                }
+                
+                .section-title i {
+                    font-size: 0.8rem;
                 }
 
                 .data-item {
                     font-size: 0.75rem;
                     color: var(--text-secondary);
-                    margin-bottom: 0.25rem;
-                    display: flex;
-                    justify-content:left;
+                    margin-bottom: 0.2rem;
+                    display: block;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                    line-height: 1.5;
                 }
 
                 .data-item strong {
                     color: var(--text-primary);
-                    font-weight: 500;
+                    font-weight: 600;
+                    margin-right: 0.25rem;
                 }
 
                 .action-buttons {
                     display: flex;
                     flex-direction: column;
-                    gap: 0.5rem;
-                    min-width: 160px;
-                    padding: 0.5rem;
+                    gap: 0.4rem;
+                    padding: 0.4rem;
                     background: rgba(248, 250, 252, 0.8);
-                    border-left: 3px solid var(--primary-color);
+                    border-left: 2px solid var(--primary-color);
                 }
 
                 .btn-sm {
-                    padding: 0.5rem 0.75rem;
-                    font-size: 0.75rem;
+                    padding: 0.45rem 0.6rem;
+                    font-size: 0.7rem;
                     border-radius: 4px;
                     white-space: nowrap;
-                    min-width: 120px;
                     text-align: center;
                     font-weight: 600;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.3rem;
                 }
-
-                /* Ensure Actions column is visible */
-                        th:last-child, td:last-child {
-            min-width: 180px;
-            position: sticky;
-            right: 0;
-            background: var(--surface-color);
-            z-index: 10;
-        }
-
-        th:last-child {
-            background: var(--primary-color) !important;
-            color: white !important;
-        }
-
-
+                
+                .btn-sm i {
+                    font-size: 0.65rem;
+                }
 
                 .btn-success {
                     background: var(--success-color);
