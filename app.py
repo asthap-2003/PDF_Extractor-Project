@@ -596,7 +596,7 @@ class Paginator:
 
 def generate_pagination_html(current_page, total_pages, base_url="?", per_page=5, total_records=0, available_sizes=[5, 10, 50, 100]):
     """Generate pagination HTML controls with attractive design and page size selector"""
-    # Always show the pagination bar, even if only one page
+    # Always show the pagination bar, even if one page
     # (User wants to see the bar for navigation/page size change)
     
     # Calculate record range
@@ -604,31 +604,36 @@ def generate_pagination_html(current_page, total_pages, base_url="?", per_page=5
     end_record = min(current_page * per_page, total_records)
     
     html = f'''
-    <div class="pagination-container">
-        <div class="pagination-info">
-            <span class="pagination-summary">
+        <div class="pagination-info" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; padding: 1rem 1.5rem; background: rgba(255, 255, 255, 0.95); border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
+            <span class="pagination-summary" style="color: #1e40af; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
                 <i class="fas fa-info-circle"></i>
                 Showing {start_record} to {end_record} of {total_records} records
             </span>
-            <span class="pagination-pages">
+            <span class="pagination-pages" style="color: #1e40af; font-weight: 700; font-size: 0.95rem; background: rgba(30, 64, 175, 0.08); padding: 0.5rem 1rem; border-radius: 6px;">
                 Page {current_page} of {total_pages}
             </span>
         </div>
         
-        <div class="pagination-controls">
+        <div class="pagination-controls" style="display: flex; gap: 0.5rem; align-items: center; justify-content: center; flex-wrap: wrap; padding: 1.5rem; background: rgba(255, 255, 255, 0.95); border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
     '''
+    
+    
+    # Button styles
+    btn_style = 'style="display: inline-flex; align-items: center; justify-content: center; padding: 0.6rem 1rem; border: 1px solid #e2e8f0; background: white; color: #1e40af; text-decoration: none; border-radius: 6px; font-size: 0.875rem; font-weight: 600; transition: all 0.2s ease; min-width: 2.5rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);"'
+    btn_active_style = 'style="display: inline-flex; align-items: center; justify-content: center; padding: 0.6rem 1rem; border: 1px solid #1e40af; background: #1e40af; color: white; text-decoration: none; border-radius: 6px; font-size: 0.875rem; font-weight: 600; min-width: 2.5rem; box-shadow: 0 4px 8px rgba(30, 64, 175, 0.25);"'
+    btn_disabled_style = 'style="display: inline-flex; align-items: center; justify-content: center; padding: 0.6rem 1rem; border: 1px solid #e2e8f0; background: #f1f5f9; color: #94a3b8; border-radius: 6px; font-size: 0.875rem; font-weight: 600; min-width: 2.5rem; opacity: 0.4; cursor: not-allowed;"'
     
     # First button
     if current_page > 1:
-        html += f'<a href="{base_url}page=1&per_page={per_page}" class="pagination-btn" title="First Page"><i class="fas fa-angle-double-left"></i></a>'
+        html += f'<a href="{base_url}page=1&per_page={per_page}" class="pagination-btn" {btn_style} title="First Page"><i class="fas fa-angle-double-left"></i></a>'
     else:
-        html += '<span class="pagination-btn disabled" title="First Page"><i class="fas fa-angle-double-left"></i></span>'
+        html += f'<span class="pagination-btn disabled" {btn_disabled_style} title="First Page"><i class="fas fa-angle-double-left"></i></span>'
 
     # Previous button
     if current_page > 1:
-        html += f'<a href="{base_url}page={current_page - 1}&per_page={per_page}" class="pagination-btn" title="Previous Page"><i class="fas fa-chevron-left"></i></a>'
+        html += f'<a href="{base_url}page={current_page - 1}&per_page={per_page}" class="pagination-btn" {btn_style} title="Previous Page"><i class="fas fa-chevron-left"></i></a>'
     else:
-        html += '<span class="pagination-btn disabled" title="Previous Page"><i class="fas fa-chevron-left"></i></span>'
+        html += f'<span class="pagination-btn disabled" {btn_disabled_style} title="Previous Page"><i class="fas fa-chevron-left"></i></span>'
 
     # Page numbers (show max 5 pages)
     start_page = max(1, current_page - 2)
@@ -636,43 +641,43 @@ def generate_pagination_html(current_page, total_pages, base_url="?", per_page=5
 
     # Show first page if not in range
     if start_page > 1:
-        html += f'<a href="{base_url}page=1&per_page={per_page}" class="pagination-btn">1</a>'
+        html += f'<a href="{base_url}page=1&per_page={per_page}" class="pagination-btn" {btn_style}>1</a>'
         if start_page > 2:
-            html += '<span class="pagination-ellipsis">...</span>'
+            html += '<span class="pagination-ellipsis" style="padding: 0.6rem 0.5rem; color: #64748b; font-weight: 600; font-size: 0.875rem;">...</span>'
 
     # Show page numbers
     for page_num in range(start_page, end_page + 1):
         if page_num == current_page:
-            html += f'<span class="pagination-btn active">{page_num}</span>'
+            html += f'<span class="pagination-btn active" {btn_active_style}>{page_num}</span>'
         else:
-            html += f'<a href="{base_url}page={page_num}&per_page={per_page}" class="pagination-btn">{page_num}</a>'
+            html += f'<a href="{base_url}page={page_num}&per_page={per_page}" class="pagination-btn" {btn_style}>{page_num}</a>'
 
     # Show last page if not in range
     if end_page < total_pages:
         if end_page < total_pages - 1:
-            html += '<span class="pagination-ellipsis">...</span>'
-        html += f'<a href="{base_url}page={total_pages}&per_page={per_page}" class="pagination-btn">{total_pages}</a>'
+            html += '<span class="pagination-ellipsis" style="padding: 0.6rem 0.5rem; color: #64748b; font-weight: 600; font-size: 0.875rem;">...</span>'
+        html += f'<a href="{base_url}page={total_pages}&per_page={per_page}" class="pagination-btn" {btn_style}>{total_pages}</a>'
 
     # Next button
     if current_page < total_pages:
-        html += f'<a href="{base_url}page={current_page + 1}&per_page={per_page}" class="pagination-btn" title="Next Page"><i class="fas fa-chevron-right"></i></a>'
+        html += f'<a href="{base_url}page={current_page + 1}&per_page={per_page}" class="pagination-btn" {btn_style} title="Next Page"><i class="fas fa-chevron-right"></i></a>'
     else:
-        html += '<span class="pagination-btn disabled" title="Next Page"><i class="fas fa-chevron-right"></i></span>'
+        html += f'<span class="pagination-btn disabled" {btn_disabled_style} title="Next Page"><i class="fas fa-chevron-right"></i></span>'
 
     # Last button
     if current_page < total_pages:
-        html += f'<a href="{base_url}page={total_pages}&per_page={per_page}" class="pagination-btn" title="Last Page"><i class="fas fa-angle-double-right"></i></a>'
+        html += f'<a href="{base_url}page={total_pages}&per_page={per_page}" class="pagination-btn" {btn_style} title="Last Page"><i class="fas fa-angle-double-right"></i></a>'
     else:
-        html += '<span class="pagination-btn disabled" title="Last Page"><i class="fas fa-angle-double-right"></i></span>'
+        html += f'<span class="pagination-btn disabled" {btn_disabled_style} title="Last Page"><i class="fas fa-angle-double-right"></i></span>'
 
     html += '</div>'
 
     # Add page size selector with JS to preserve page and per_page
     html += f'''
-    <div class="pagination-options">
-        <div class="page-size-selector">
+    <div class="pagination-options" style="display: flex; justify-content: center; align-items: center; padding: 1rem 1.5rem; background: rgba(255, 255, 255, 0.95); border-radius: 8px; margin-top: 1rem; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
+        <div class="page-size-selector" style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.875rem; color: #1e293b; font-weight: 600;">
             <label for="pageSize">Show:</label>
-            <select id="pageSize" onchange="changePageSize(this.value)">
+            <select id="pageSize" onchange="changePageSize(this.value)" style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; border-radius: 6px; background: white; color: #1e293b; font-size: 0.875rem; cursor: pointer; font-weight: 600; min-width: 80px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);">
     '''
 
     for size in available_sizes:
@@ -693,7 +698,6 @@ def generate_pagination_html(current_page, total_pages, base_url="?", per_page=5
         window.location.search = params.toString();
     }
     </script>
-    </div>
     '''
 
     return html
@@ -1344,458 +1348,161 @@ def contracts_list():
                         padding: 0.375rem 0.5rem;
                     }
                     
-                    /* Ultra Modern Attractive Pagination Styles */
+                    /* PAGINATION VERSION 2025-11-10-FINAL */
                     .pagination-container {
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        border-radius: 25px;
-                        padding: 3rem;
-                        margin: 3rem 0;
-                        box-shadow: 
-                            0 25px 50px rgba(0, 0, 0, 0.15), 
-                            0 15px 35px rgba(102, 126, 234, 0.2),
-                            inset 0 1px 0 rgba(255, 255, 255, 0.2);
-                        border: 2px solid rgba(255, 255, 255, 0.1);
-                        position: relative;
-                        overflow: hidden;
-                        backdrop-filter: blur(20px);
-                        animation: paginationGlow 4s ease-in-out infinite;
-                    }
-
-                    @keyframes paginationGlow {
-                        0%, 100% { 
-                            box-shadow: 
-                                0 25px 50px rgba(0, 0, 0, 0.15), 
-                                0 15px 35px rgba(102, 126, 234, 0.2),
-                                inset 0 1px 0 rgba(255, 255, 255, 0.2);
-                        }
-                        50% { 
-                            box-shadow: 
-                                0 30px 60px rgba(0, 0, 0, 0.2), 
-                                0 20px 40px rgba(102, 126, 234, 0.3),
-                                inset 0 1px 0 rgba(255, 255, 255, 0.3);
-                        }
-                    }
-
-                    .pagination-container::before {
-                        content: '';
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        height: 4px;
-                        background: linear-gradient(90deg, #2563eb, #059669, #d97706, #dc2626);
-                        background-size: 200% 100%;
-                        animation: gradientShift 3s ease-in-out infinite;
-                    }
-
-                    @keyframes gradientShift {
-                        0%, 100% { background-position: 0% 50%; }
-                        50% { background-position: 100% 50%; }
+                        background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%) !important;
+                        border-radius: 12px !important;
+                        padding: 1.5rem !important;
+                        margin: 2rem 0 !important;
+                        box-shadow: 0 8px 20px rgba(30, 64, 175, 0.25) !important;
+                        border: 2px solid rgba(255, 255, 255, 0.2) !important;
                     }
                     
                     .pagination-info {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        flex-wrap: wrap;
-                        gap: 1.5rem;
-                        margin-bottom: 2.5rem;
-                        padding: 2rem;
-                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
-                        border-radius: 20px;
-                        border: 2px solid rgba(255, 255, 255, 0.3);
-                        backdrop-filter: blur(20px);
-                        box-shadow: 
-                            0 15px 35px rgba(0, 0, 0, 0.1),
-                            0 8px 25px rgba(102, 126, 234, 0.15);
-                        position: relative;
-                        overflow: hidden;
+                        display: flex !important;
+                        justify-content: space-between !important;
+                        align-items: center !important;
+                        flex-wrap: wrap !important;
+                        gap: 1rem !important;
+                        margin-bottom: 1.5rem !important;
+                        padding: 1rem 1.5rem !important;
+                        background: rgba(255, 255, 255, 0.95) !important;
+                        border-radius: 8px !important;
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
                     }
 
                     .pagination-summary {
-                        color: #667eea;
-                        font-weight: 800;
-                        font-size: 1.1rem;
-                        display: flex;
-                        align-items: center;
-                        gap: 1rem;
-                        background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
-                        padding: 1rem 1.5rem;
-                        border-radius: 15px;
-                        border: 2px solid rgba(102, 126, 234, 0.3);
-                        box-shadow: 
-                            0 8px 25px rgba(102, 126, 234, 0.2),
-                            inset 0 1px 0 rgba(255, 255, 255, 0.3);
-                        position: relative;
-                        overflow: hidden;
-                        backdrop-filter: blur(10px);
+                        color: var(--primary-color) !important;
+                        font-weight: 600 !important;
+                        font-size: 0.9rem !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        gap: 0.5rem !important;
                     }
 
                     .pagination-summary i {
-                        color: #667eea;
-                        font-size: 1.3rem;
-                        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                        color: var(--primary-color) !important;
+                        font-size: 1rem !important;
                     }
 
                     .pagination-pages {
-                        color: #667eea;
-                        font-weight: 900;
-                        font-size: 1.2rem;
-                        background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
-                        padding: 1rem 2rem;
-                        border-radius: 15px;
-                        border: 2px solid rgba(102, 126, 234, 0.4);
-                        box-shadow: 
-                            0 10px 30px rgba(102, 126, 234, 0.3),
-                            inset 0 1px 0 rgba(255, 255, 255, 0.4);
-                        position: relative;
-                        overflow: hidden;
-                        backdrop-filter: blur(10px);
-                        animation: pageGlow 3s ease-in-out infinite;
-                    }
-                    
-                    @keyframes pageGlow {
-                        0%, 100% { 
-                            box-shadow: 
-                                0 10px 30px rgba(102, 126, 234, 0.3),
-                                inset 0 1px 0 rgba(255, 255, 255, 0.4);
-                        }
-                        50% { 
-                            box-shadow: 
-                                0 15px 40px rgba(102, 126, 234, 0.4),
-                                inset 0 1px 0 rgba(255, 255, 255, 0.5);
-                        }
-                    }
-
-                    .pagination-pages::before {
-                        content: '';
-                        position: absolute;
-                        top: 0;
-                        left: -100%;
-                        width: 100%;
-                        height: 100%;
-                        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-                        transition: left 0.6s;
-                    }
-
-                    .pagination-pages:hover::before {
-                        left: 100%;
+                        color: var(--primary-color) !important;
+                        font-weight: 700 !important;
+                        font-size: 0.95rem !important;
+                        background: rgba(30, 64, 175, 0.08) !important;
+                        padding: 0.5rem 1rem !important;
+                        border-radius: 6px !important;
                     }
                     
                     .pagination-controls {
-                        display: flex;
-                        gap: 1rem;
-                        align-items: center;
-                        justify-content: center;
-                        flex-wrap: wrap;
-                        padding: 2.5rem;
-                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
-                        border-radius: 22px;
-                        box-shadow: 
-                            0 20px 40px rgba(0, 0, 0, 0.15), 
-                            0 10px 30px rgba(102, 126, 234, 0.2);
-                        border: 2px solid rgba(255, 255, 255, 0.3);
-                        backdrop-filter: blur(20px);
-                        position: relative;
-                        overflow: hidden;
-                        animation: controlsFloat 6s ease-in-out infinite;
-                    }
-                    
-                    @keyframes controlsFloat {
-                        0%, 100% { transform: translateY(0px); }
-                        50% { transform: translateY(-5px); }
-                    }
-
-                    .pagination-controls::before {
-                        content: '';
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        height: 2px;
-                        background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+                        display: flex !important;
+                        gap: 0.5rem !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        flex-wrap: wrap !important;
+                        padding: 1.5rem !important;
+                        background: rgba(255, 255, 255, 0.95) !important;
+                        border-radius: 8px !important;
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
                     }
                     
                     .pagination-btn {
-                        display: inline-flex;
-                        align-items: center;
-                        justify-content: center;
-                        padding: 1.25rem 1.75rem;
-                        border: 2px solid rgba(255, 255, 255, 0.3);
-                        background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
-                        color: #667eea;
-                        text-decoration: none;
-                        border-radius: 15px;
-                        font-size: 1rem;
-                        font-weight: 800;
-                        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-                        min-width: 4rem;
-                        box-shadow: 
-                            0 8px 25px rgba(0, 0, 0, 0.15),
-                            0 4px 15px rgba(102, 126, 234, 0.2);
-                        margin: 0 0.4rem;
-                        position: relative;
-                        overflow: hidden;
-                        backdrop-filter: blur(10px);
-                        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-                    }
-
-                    .pagination-btn::before {
-                        content: '';
-                        position: absolute;
-                        top: 0;
-                        left: -100%;
-                        width: 100%;
-                        height: 100%;
-                        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
-                        transition: left 0.6s ease-in-out;
-                    }
-
-                    .pagination-btn:hover::before {
-                        left: 100%;
+                        display: inline-flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        padding: 0.6rem 1rem !important;
+                        border: 1px solid var(--border-color) !important;
+                        background: white !important;
+                        color: var(--primary-color) !important;
+                        text-decoration: none !important;
+                        border-radius: 6px !important;
+                        font-size: 0.875rem !important;
+                        font-weight: 600 !important;
+                        transition: all 0.2s ease !important;
+                        min-width: 2.5rem !important;
+                        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
                     }
 
                     .pagination-btn:hover {
-                        background: linear-gradient(145deg, #667eea, #764ba2);
-                        color: white;
-                        border-color: rgba(255, 255, 255, 0.5);
-                        transform: translateY(-5px) scale(1.08);
-                        box-shadow: 
-                            0 15px 35px rgba(0, 0, 0, 0.2),
-                            0 8px 25px rgba(102, 126, 234, 0.4),
-                            0 0 0 0 rgba(102, 126, 234, 0.7);
-                        animation: buttonPulse 0.6s ease-out;
-                    }
-                    
-                    @keyframes buttonPulse {
-                        0% { transform: translateY(-5px) scale(1.08); }
-                        50% { transform: translateY(-7px) scale(1.12); }
-                        100% { transform: translateY(-5px) scale(1.08); }
+                        background: var(--primary-color) !important;
+                        color: white !important;
+                        border-color: var(--primary-color) !important;
+                        transform: translateY(-2px) !important;
+                        box-shadow: 0 4px 8px rgba(30, 64, 175, 0.2) !important;
                     }
                     
                     .pagination-btn.active {
-                        background: linear-gradient(145deg, #667eea, #764ba2);
-                        color: white;
-                        border-color: rgba(255, 255, 255, 0.6);
-                        box-shadow: 
-                            0 12px 30px rgba(0, 0, 0, 0.25),
-                            0 6px 20px rgba(102, 126, 234, 0.5);
-                        transform: translateY(-3px) scale(1.06);
-                        position: relative;
-                        animation: activeGlow 2s ease-in-out infinite;
-                    }
-                    
-                    @keyframes activeGlow {
-                        0%, 100% { 
-                            box-shadow: 
-                                0 12px 30px rgba(0, 0, 0, 0.25),
-                                0 6px 20px rgba(102, 126, 234, 0.5);
-                        }
-                        50% { 
-                            box-shadow: 
-                                0 15px 35px rgba(0, 0, 0, 0.3),
-                                0 8px 25px rgba(102, 126, 234, 0.6);
-                        }
-                    }
-
-                    .pagination-btn.active::after {
-                        content: '';
-                        position: absolute;
-                        bottom: -4px;
-                        left: 50%;
-                        transform: translateX(-50%);
-                        width: 0;
-                        height: 0;
-                        border-left: 8px solid transparent;
-                        border-right: 8px solid transparent;
-                        border-top: 8px solid var(--primary-color);
-                        filter: drop-shadow(0 2px 4px rgba(37, 99, 235, 0.3));
+                        background: var(--primary-color) !important;
+                        color: white !important;
+                        border-color: var(--primary-color) !important;
+                        box-shadow: 0 4px 8px rgba(30, 64, 175, 0.25) !important;
                     }
                     
                     .pagination-btn.disabled {
-                        opacity: 0.4;
-                        cursor: not-allowed;
-                        border-color: var(--border-color);
-                        color: var(--text-muted);
-                        background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
-                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                        opacity: 0.4 !important;
+                        cursor: not-allowed !important;
+                        background: #f1f5f9 !important;
+                        color: var(--text-muted) !important;
+                        border-color: var(--border-color) !important;
                     }
                     
                     .pagination-btn.disabled:hover {
-                        background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
-                        color: var(--text-muted);
-                        border-color: var(--border-color);
-                        transform: none;
-                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                        background: #f1f5f9 !important;
+                        color: var(--text-muted) !important;
+                        border-color: var(--border-color) !important;
+                        transform: none !important;
+                        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
                     }
                     
                     .pagination-ellipsis {
-                        padding: 1rem 1rem;
-                        color: var(--text-secondary);
-                        font-weight: 700;
-                        font-size: 1rem;
-                        background: rgba(255, 255, 255, 0.8);
-                        border-radius: 10px;
-                        border: 1px solid rgba(37, 99, 235, 0.1);
+                        padding: 0.6rem 0.5rem !important;
+                        color: var(--text-secondary) !important;
+                        font-weight: 600 !important;
+                        font-size: 0.875rem !important;
                     }
                     
                     .pagination-options {
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        padding: 2.5rem;
-                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
-                        border-radius: 22px;
-                        border: 2px solid rgba(255, 255, 255, 0.3);
-                        margin-top: 2rem;
-                        box-shadow: 
-                            0 15px 35px rgba(0, 0, 0, 0.1),
-                            0 8px 25px rgba(102, 126, 234, 0.15);
-                        backdrop-filter: blur(20px);
-                        position: relative;
-                        overflow: hidden;
-                        animation: optionsFloat 8s ease-in-out infinite;
-                    }
-                    
-                    @keyframes optionsFloat {
-                        0%, 100% { transform: translateY(0px); }
-                        50% { transform: translateY(-3px); }
-                    }
-                    
-                    /* Responsive Design for Pagination */
-                    @media (max-width: 768px) {
-                        .pagination-container {
-                            padding: 2rem 1.5rem;
-                            margin: 2rem 0;
-                            border-radius: 20px;
-                        }
-                        
-                        .pagination-info {
-                            flex-direction: column;
-                            gap: 1rem;
-                            padding: 1.5rem;
-                            text-align: center;
-                        }
-                        
-                        .pagination-summary,
-                        .pagination-pages {
-                            font-size: 0.9rem;
-                            padding: 0.75rem 1rem;
-                        }
-                        
-                        .pagination-controls {
-                            padding: 1.5rem;
-                            gap: 0.5rem;
-                        }
-                        
-                        .pagination-btn {
-                            padding: 0.75rem 1rem;
-                            font-size: 0.9rem;
-                            min-width: 3rem;
-                            margin: 0 0.2rem;
-                        }
-                        
-                        .pagination-options {
-                            padding: 1.5rem;
-                        }
-                        
-                        .page-size-selector {
-                            flex-direction: column;
-                            gap: 1rem;
-                            text-align: center;
-                            padding: 1rem 1.5rem;
-                        }
-                        
-                        .page-size-selector select {
-                            padding: 0.75rem 1rem;
-                            font-size: 0.9rem;
-                            min-width: 80px;
-                        }
-                    }
-                    
-                    @media (max-width: 480px) {
-                        .pagination-container {
-                            padding: 1.5rem 1rem;
-                            margin: 1.5rem 0;
-                        }
-                        
-                        .pagination-controls {
-                            padding: 1rem;
-                            gap: 0.3rem;
-                        }
-                        
-                        .pagination-btn {
-                            padding: 0.5rem 0.75rem;
-                            font-size: 0.8rem;
-                            min-width: 2.5rem;
-                            margin: 0 0.1rem;
-                        }
-                        
-                        .pagination-summary,
-                        .pagination-pages {
-                            font-size: 0.8rem;
-                            padding: 0.5rem 0.75rem;
-                        }
+                        display: flex !important;
+                        justify-content: center !important;
+                        align-items: center !important;
+                        padding: 1rem 1.5rem !important;
+                        background: rgba(255, 255, 255, 0.95) !important;
+                        border-radius: 8px !important;
+                        margin-top: 1rem !important;
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
                     }
                     
                     .page-size-selector {
-                        display: flex;
-                        align-items: center;
-                        gap: 1.5rem;
-                        font-size: 1.1rem;
-                        color: #667eea;
-                        font-weight: 800;
-                        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-                        padding: 1.5rem 2rem;
-                        border-radius: 18px;
-                        border: 2px solid rgba(102, 126, 234, 0.3);
-                        box-shadow: 
-                            0 10px 30px rgba(102, 126, 234, 0.2),
-                            inset 0 1px 0 rgba(255, 255, 255, 0.3);
-                        backdrop-filter: blur(10px);
-                        position: relative;
-                        overflow: hidden;
+                        display: flex !important;
+                        align-items: center !important;
+                        gap: 0.75rem !important;
+                        font-size: 0.875rem !important;
+                        color: var(--text-primary) !important;
+                        font-weight: 600 !important;
                     }
                     
                     .page-size-selector select {
-                        padding: 1rem 1.5rem;
-                        border: 2px solid rgba(102, 126, 234, 0.4);
-                        border-radius: 15px;
-                        background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
-                        color: #667eea;
-                        font-size: 1rem;
-                        cursor: pointer;
-                        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-                        font-weight: 800;
-                        min-width: 100px;
-                        box-shadow: 
-                            0 8px 25px rgba(102, 126, 234, 0.2),
-                            inset 0 1px 0 rgba(255, 255, 255, 0.3);
-                        backdrop-filter: blur(10px);
+                        padding: 0.5rem 1rem !important;
+                        border: 1px solid var(--border-color) !important;
+                        border-radius: 6px !important;
+                        background: white !important;
+                        color: var(--text-primary) !important;
+                        font-size: 0.875rem !important;
+                        cursor: pointer !important;
+                        transition: all 0.2s ease !important;
+                        font-weight: 600 !important;
+                        min-width: 80px !important;
+                        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
                     }
                     
                     .page-size-selector select:focus {
-                        outline: none;
-                        border-color: #667eea;
-                        box-shadow: 
-                            0 0 0 4px rgba(102, 126, 234, 0.2), 
-                            0 12px 35px rgba(102, 126, 234, 0.3);
-                        transform: translateY(-3px) scale(1.02);
+                        outline: none !important;
+                        border-color: var(--primary-color) !important;
+                        box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1) !important;
                     }
                     
                     .page-size-selector select:hover {
-                        border-color: #667eea;
-                        box-shadow: 
-                            0 10px 30px rgba(102, 126, 234, 0.3),
-                            0 0 0 0 rgba(102, 126, 234, 0.5);
-                        transform: translateY(-2px) scale(1.01);
-                        animation: selectPulse 0.4s ease-out;
-                    }
-                    
-                    @keyframes selectPulse {
-                        0% { transform: translateY(-2px) scale(1.01); }
-                        50% { transform: translateY(-4px) scale(1.03); }
-                        100% { transform: translateY(-2px) scale(1.01); }
+                        border-color: var(--primary-light) !important;
                     }
                         box-shadow: var(--shadow-sm);
                     }
@@ -2138,7 +1845,7 @@ def contracts_list():
         </div>
         
         <!-- Attractive Pagination -->
-        <div id="pagination-container">
+        <div id="pagination-container" class="pagination-container" style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%) !important; border-radius: 12px; padding: 1.5rem; margin: 2rem 0; box-shadow: 0 8px 20px rgba(30, 64, 175, 0.25); border: 2px solid rgba(255, 255, 255, 0.2);">
         ''' + pagination_html + '''
         </div>
         
@@ -2170,83 +1877,89 @@ def contracts_list():
                     const startRecord = (currentPage - 1) * perPage + 1;
                     const endRecord = Math.min(currentPage * perPage, totalRecords);
                     
-                    let html = `
-                        <div class="pagination-container">
-                            <div class="pagination-info">
-                                <span class="pagination-summary">
-                                    <i class="fas fa-info-circle"></i>
-                                    Showing ${startRecord} to ${endRecord} of ${totalRecords} records
-                                </span>
-                                <span class="pagination-pages">
-                                    Page ${currentPage} of ${totalPages}
-                                </span>
-                            </div>
-                           
-                            <div class="pagination-controls">
-                    `;
+                    // Inline styles for consistency
+                    const infoStyle = 'style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; padding: 1rem 1.5rem; background: rgba(255, 255, 255, 0.95); border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);"';
+                    const summaryStyle = 'style="color: #1e40af; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;"';
+                    const pagesStyle = 'style="color: #1e40af; font-weight: 700; font-size: 0.95rem; background: rgba(30, 64, 175, 0.08); padding: 0.5rem 1rem; border-radius: 6px;"';
+                    const controlsStyle = 'style="display: flex; gap: 0.5rem; align-items: center; justify-content: center; flex-wrap: wrap; padding: 1.5rem; background: rgba(255, 255, 255, 0.95); border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);"';
+                    const btnStyle = 'style="display: inline-flex; align-items: center; justify-content: center; padding: 0.6rem 1rem; border: 1px solid #e2e8f0; background: white; color: #1e40af; text-decoration: none; border-radius: 6px; font-size: 0.875rem; font-weight: 600; transition: all 0.2s ease; min-width: 2.5rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);"';
+                    const btnActiveStyle = 'style="display: inline-flex; align-items: center; justify-content: center; padding: 0.6rem 1rem; border: 1px solid #1e40af; background: #1e40af; color: white; text-decoration: none; border-radius: 6px; font-size: 0.875rem; font-weight: 600; min-width: 2.5rem; box-shadow: 0 4px 8px rgba(30, 64, 175, 0.25);"';
+                    const btnDisabledStyle = 'style="display: inline-flex; align-items: center; justify-content: center; padding: 0.6rem 1rem; border: 1px solid #e2e8f0; background: #f1f5f9; color: #94a3b8; border-radius: 6px; font-size: 0.875rem; font-weight: 600; min-width: 2.5rem; opacity: 0.4; cursor: not-allowed;"';
+                    const ellipsisStyle = 'style="padding: 0.6rem 0.5rem; color: #64748b; font-weight: 600; font-size: 0.875rem;"';
+                    
+                    let html = 
+                        '<div class="pagination-info" ' + infoStyle + '>' +
+                            '<span class="pagination-summary" ' + summaryStyle + '>' +
+                                '<i class="fas fa-info-circle"></i>' +
+                                'Showing ' + startRecord + ' to ' + endRecord + ' of ' + totalRecords + ' records' +
+                            '</span>' +
+                            '<span class="pagination-pages" ' + pagesStyle + '>' +
+                                'Page ' + currentPage + ' of ' + totalPages +
+                            '</span>' +
+                        '</div>' +
+                       
+                        '<div class="pagination-controls" ' + controlsStyle + '>';
                     
                     // First button
                     if (currentPage > 1) {
-                        html += `<a href="#" onclick="changePage(1); return false;" class="pagination-btn" title="First Page"><i class="fas fa-angle-double-left"></i></a>`;
+                        html += '<a href="#" onclick="changePage(1); return false;" class="pagination-btn" ' + btnStyle + ' title="First Page"><i class="fas fa-angle-double-left"></i></a>';
                     } else {
-                        html += '<span class="pagination-btn disabled" title="First Page"><i class="fas fa-angle-double-left"></i></span>';
+                        html += '<span class="pagination-btn disabled" ' + btnDisabledStyle + ' title="First Page"><i class="fas fa-angle-double-left"></i></span>';
                     }
                     // Previous button
                     if (currentPage > 1) {
-                        html += `<a href="#" onclick="changePage(${currentPage - 1}); return false;" class="pagination-btn" title="Previous Page"><i class="fas fa-chevron-left"></i></a>`;
+                        html += '<a href="#" onclick="changePage(' + (currentPage - 1) + '); return false;" class="pagination-btn" ' + btnStyle + ' title="Previous Page"><i class="fas fa-chevron-left"></i></a>';
                     } else {
-                        html += '<span class="pagination-btn disabled" title="Previous Page"><i class="fas fa-chevron-left"></i></span>';
+                        html += '<span class="pagination-btn disabled" ' + btnDisabledStyle + ' title="Previous Page"><i class="fas fa-chevron-left"></i></span>';
                     }
                     // Page numbers (max 5)
                     let startPage = Math.max(1, currentPage - 2);
                     let endPage = Math.min(totalPages, currentPage + 2);
                     if (startPage > 1) {
-                        html += `<a href="#" onclick="changePage(1); return false;" class="pagination-btn">1</a>`;
-                        if (startPage > 2) html += '<span class="pagination-ellipsis">...</span>';
+                        html += '<a href="#" onclick="changePage(1); return false;" class="pagination-btn" ' + btnStyle + '>1</a>';
+                        if (startPage > 2) html += '<span class="pagination-ellipsis" ' + ellipsisStyle + '>...</span>';
                     }
                     for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
                         if (pageNum === currentPage) {
-                            html += `<span class="pagination-btn active">${pageNum}</span>`;
+                            html += '<span class="pagination-btn active" ' + btnActiveStyle + '>' + pageNum + '</span>';
                         } else {
-                            html += `<a href="#" onclick="changePage(${pageNum}); return false;" class="pagination-btn">${pageNum}</a>`;
+                            html += '<a href="#" onclick="changePage(' + pageNum + '); return false;" class="pagination-btn" ' + btnStyle + '>' + pageNum + '</a>';
                         }
                     }
                     if (endPage < totalPages) {
-                        if (endPage < totalPages - 1) html += '<span class="pagination-ellipsis">...</span>';
-                        html += `<a href="#" onclick="changePage(${totalPages}); return false;" class="pagination-btn">${totalPages}</a>`;
+                        if (endPage < totalPages - 1) html += '<span class="pagination-ellipsis" ' + ellipsisStyle + '>...</span>';
+                        html += '<a href="#" onclick="changePage(' + totalPages + '); return false;" class="pagination-btn" ' + btnStyle + '>' + totalPages + '</a>';
                     }
                     // Next button
                     if (currentPage < totalPages) {
-                        html += `<a href="#" onclick="changePage(${currentPage + 1}); return false;" class="pagination-btn" title="Next Page"><i class="fas fa-chevron-right"></i></a>`;
+                        html += '<a href="#" onclick="changePage(' + (currentPage + 1) + '); return false;" class="pagination-btn" ' + btnStyle + ' title="Next Page"><i class="fas fa-chevron-right"></i></a>';
                     } else {
-                        html += '<span class="pagination-btn disabled" title="Next Page"><i class="fas fa-chevron-right"></i></span>';
+                        html += '<span class="pagination-btn disabled" ' + btnDisabledStyle + ' title="Next Page"><i class="fas fa-chevron-right"></i></span>';
                     }
                     // Last button
                     if (currentPage < totalPages) {
-                        html += `<a href="#" onclick="changePage(${totalPages}); return false;" class="pagination-btn" title="Last Page"><i class="fas fa-angle-double-right"></i></a>`;
+                        html += '<a href="#" onclick="changePage(' + totalPages + '); return false;" class="pagination-btn" ' + btnStyle + ' title="Last Page"><i class="fas fa-angle-double-right"></i></a>';
                     } else {
-                        html += '<span class="pagination-btn disabled" title="Last Page"><i class="fas fa-angle-double-right"></i></span>';
+                        html += '<span class="pagination-btn disabled" ' + btnDisabledStyle + ' title="Last Page"><i class="fas fa-angle-double-right"></i></span>';
                     }
                     html += '</div>';
                     
                     // Page size selector
-                    html += `
-                        <div class="pagination-options">
-                            <div class="page-size-selector">
-                                <label for="pageSize">Show:</label>
-                                <select id="pageSize" onchange="changePageSize(this.value)">
-                    `;
+                    html += '<div class="pagination-options" style="display: flex; justify-content: center; align-items: center; padding: 1rem 1.5rem; background: rgba(255, 255, 255, 0.95); border-radius: 8px; margin-top: 1rem; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">' +
+                            '<div class="page-size-selector" style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.875rem; color: #1e293b; font-weight: 600;">' +
+                                '<label for="pageSize">Show:</label>' +
+                                '<select id="pageSize" onchange="changePageSize(this.value)" style="padding: 0.5rem 1rem; border: 1px solid #e2e8f0; border-radius: 6px; background: white; color: #1e293b; font-size: 0.875rem; cursor: pointer; font-weight: 600; min-width: 80px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);">';
+                    
                     availableSizes.forEach(size => {
                         const selected = size === perPage ? 'selected' : '';
-                        html += `<option value="${size}" ${selected}>${size}</option>`;
+                        html += '<option value="' + size + '" ' + selected + '>' + size + '</option>';
                     });
-                    html += `
-                                </select>
-                                <span>per page</span>
-                            </div>
-                        </div>
-                        </div>
-                    `;
+                    
+                    html += '</select>' +
+                                '<span>per page</span>' +
+                            '</div>' +
+                        '</div>';
+                    
                     return html;
                 }
                 
