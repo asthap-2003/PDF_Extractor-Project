@@ -835,6 +835,7 @@ def contracts_list():
             <title>GEM Contract Management System</title>
             <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
             <style>
                 :root {
                     --primary-color: #1e40af;
@@ -1701,7 +1702,8 @@ def contracts_list():
 
                         <!-- Date From with Clear -->
                         <div style="position: relative; flex: 0 0 auto; width: 170px;">
-                            <input type="date" id="dateFrom" class="date-input" placeholder="mm/dd/yyyy" style="width: 100%; height: 38px; padding: 0.5rem 2.25rem 0.5rem 0.75rem; border: 2px solid #1e40af; border-radius: 6px; font-size: 0.875rem; background: white; box-sizing: border-box; cursor: pointer;">
+                            <label style="position: absolute; top: -18px; left: 0; font-size: 0.7rem; color: #64748b; font-weight: 500;"></label>
+                            <input type="text" id="dateFrom" class="date-input" placeholder="DD/MM/YYYY" style="width: 100%; height: 38px; padding: 0.5rem 2.25rem 0.5rem 0.75rem; border: 2px solid #1e40af; border-radius: 6px; font-size: 0.875rem; background: white; box-sizing: border-box; cursor: pointer;">
                             <button id="clearDateFromBtn" class="clear-date-from-btn" title="Clear from date" style="position: absolute; right: 0.25rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer; padding: 0.25rem; display: none; font-size: 0.875rem;">
                                 <i class="fas fa-times"></i>
                             </button>
@@ -1709,7 +1711,8 @@ def contracts_list():
 
                         <!-- Date To with Clear -->
                         <div style="position: relative; flex: 0 0 auto; width: 170px;">
-                            <input type="date" id="dateTo" class="date-input" placeholder="mm/dd/yyyy" style="width: 100%; height: 38px; padding: 0.5rem 2.25rem 0.5rem 0.75rem; border: 2px solid #1e40af; border-radius: 6px; font-size: 0.875rem; background: white; box-sizing: border-box; cursor: pointer;">
+                            <label style="position: absolute; top: -18px; left: 0; font-size: 0.7rem; color: #64748b; font-weight: 500;"></label>
+                            <input type="text" id="dateTo" class="date-input" placeholder="DD/MM/YYYY" style="width: 100%; height: 38px; padding: 0.5rem 2.25rem 0.5rem 0.75rem; border: 2px solid #1e40af; border-radius: 6px; font-size: 0.875rem; background: white; box-sizing: border-box; cursor: pointer;">
                             <button id="clearDateToBtn" class="clear-date-to-btn" title="Clear to date" style="position: absolute; right: 0.25rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer; padding: 0.25rem; display: none; font-size: 0.875rem;">
                                 <i class="fas fa-times"></i>
                             </button>
@@ -2189,9 +2192,19 @@ def contracts_list():
                         );
                     }
                     
-                    // Date filter
-                    const fromDate = dateFromInput.value ? new Date(dateFromInput.value) : null;
-                    const toDate = dateToInput.value ? new Date(dateToInput.value) : null;
+                    // Date filter (handle DD/MM/YYYY format)
+                    function parseDDMMYYYY(dateStr) {
+                        if (!dateStr) return null;
+                        const parts = dateStr.split('/');
+                        if (parts.length === 3) {
+                            // DD/MM/YYYY -> new Date(YYYY, MM-1, DD)
+                            return new Date(parts[2], parts[1] - 1, parts[0]);
+                        }
+                        return null;
+                    }
+                    
+                    const fromDate = parseDDMMYYYY(dateFromInput.value);
+                    const toDate = parseDDMMYYYY(dateToInput.value);
                     if (fromDate || toDate) {
                         tempFiltered = tempFiltered.filter(contract => {
                             if (!contract.date) return false;
@@ -2306,6 +2319,29 @@ def contracts_list():
                             e.target.innerHTML = originalText;
                             e.target.style.pointerEvents = 'auto';
                         }, 2000);
+                    }
+                });
+            </script>
+            
+            <!-- Flatpickr JS -->
+            <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+            <script>
+                // Initialize Flatpickr for date inputs with DD/MM/YYYY format
+                flatpickr("#dateFrom", {
+                    dateFormat: "d/m/Y",
+                    allowInput: true,
+                    onChange: function(selectedDates, dateStr, instance) {
+                        updateClearAllButton();
+                        applyFilters();
+                    }
+                });
+                
+                flatpickr("#dateTo", {
+                    dateFormat: "d/m/Y",
+                    allowInput: true,
+                    onChange: function(selectedDates, dateStr, instance) {
+                        updateClearAllButton();
+                        applyFilters();
                     }
                 });
             </script>
