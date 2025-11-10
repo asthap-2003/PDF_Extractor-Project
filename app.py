@@ -754,6 +754,8 @@ def contracts_list():
             LEFT JOIN organisations o ON c.contract_id = o.contract_id
             LEFT JOIN sellers s ON c.contract_id = s.contract_id
             LEFT JOIN buyers b ON c.contract_id = b.contract_id
+            WHERE (o.organisation_name IS NOT NULL AND o.organisation_name != '') 
+               OR (s.company_name IS NOT NULL AND s.company_name != '')
             ORDER BY c.upload_time DESC, c.contract_id DESC
         """)
         
@@ -2348,6 +2350,8 @@ def export_contracts_excel():
             LEFT JOIN organisations o ON c.contract_id = o.contract_id
             LEFT JOIN sellers s ON c.contract_id = s.contract_id
             LEFT JOIN buyers b ON c.contract_id = b.contract_id
+            WHERE (o.organisation_name IS NOT NULL AND o.organisation_name != '') 
+               OR (s.company_name IS NOT NULL AND s.company_name != '')
             ORDER BY c.upload_time DESC, c.contract_id DESC
             """
         )
