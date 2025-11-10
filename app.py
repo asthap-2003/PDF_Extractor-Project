@@ -1993,15 +1993,13 @@ def contracts_list():
                                            dateFromInput.value !== '' || 
                                            dateToInput.value !== '';
                     
-                    // If filtered and active, show ALL results (disable pagination)
-                    if (isFilterActive) {
-                        perPage = filteredContracts.length;  // Set to show all filtered results
-                        currentPage = 1;  // Only one "page"
-                        paginationContainer.style.display = 'none';  // Hide pagination bar
-                    } else {
-                        perPage = originalPerPage;  // Restore original
-                        totalPages = Math.ceil(allContracts.length / perPage);
-                        paginationContainer.style.display = 'block';  // Show pagination
+                    // Always use normal pagination (whether filtered or not)
+                    perPage = originalPerPage;
+                    totalPages = Math.ceil(filteredContracts.length / perPage);
+                    
+                    // Reset to page 1 if current page exceeds total pages
+                    if (currentPage > totalPages) {
+                        currentPage = 1;
                     }
                     
                     const start = (currentPage - 1) * perPage;
@@ -2138,28 +2136,15 @@ def contracts_list():
                     });
                     tableBody.innerHTML = html;
                     
-                    // Only update pagination HTML if not filtered
-                    if (!isFilterActive) {
-                        totalRecords = allContracts.length;
-                        totalPages = Math.ceil(totalRecords / perPage);
-                        paginationContainer.innerHTML = generatePaginationHTML(currentPage, totalPages, perPage, totalRecords);
-                    } else {
-                        // Show "Showing all filtered results" message
-                        paginationContainer.innerHTML = `
-                            <div class="pagination-container">
-                                <div class="pagination-info" style="justify-content: center; text-align: center; padding: 1.5rem;">
-                                    <span class="pagination-summary" style="font-size: 1.2rem;">
-                                        <i class="fas fa-filter"></i> Showing all ${filteredContracts.length} filtered results
-                                    </span>
-                                </div>
-                            </div>
-                        `;
-                        paginationContainer.style.display = 'block';  // Show the message
-                    }
+                    // Always show pagination (for both filtered and unfiltered data)
+                    totalRecords = filteredContracts.length;
+                    totalPages = Math.ceil(totalRecords / perPage);
+                    paginationContainer.innerHTML = generatePaginationHTML(currentPage, totalPages, perPage, totalRecords);
+                    paginationContainer.style.display = 'block';
                 }
                 
                 // Combined filter function (search + state + date)
-                function applyFilters() {
+                function applyFilters(resetPage = true) {
                     let tempFiltered = [...allContracts];
                     
                     // Search filter
@@ -2215,7 +2200,9 @@ def contracts_list():
                     }
                     
                     filteredContracts = tempFiltered;
-                    currentPage = 1;  // Reset to page 1 on filter
+                    if (resetPage) {
+                        currentPage = 1;  // Reset to page 1 only when filters change
+                    }
                     console.log('Filters Applied:', {
                         totalContracts: allContracts.length,
                         filteredCount: filteredContracts.length,
@@ -2309,38 +2296,28 @@ def contracts_list():
                 
                 // Pagination functions (global scope માટે)
                 window.changePageSize = function(size) {
-                    // Only change if no filter active
-                    if (searchInput.value.trim() === '' && stateSearchSelect.value === '' && 
-                        dateFromInput.value === '' && dateToInput.value === '') {
-                        originalPerPage = parseInt(size);
-                        perPage = originalPerPage;
-                        currentPage = 1;
-                        console.log('Page Size Changed:', {
-                            newSize: perPage,
-                            totalPages: Math.ceil(allContracts.length / perPage)
-                        });
-                        displayFilteredContractsPaginated();
-                    } else {
-                        // If filtered, ignore dropdown change (all results already shown)
-                        console.log('Page size change ignored - filter is active, showing all results');
-                    }
+                    // Allow page size change for both filtered and unfiltered data
+                    originalPerPage = parseInt(size);
+                    perPage = originalPerPage;
+                    currentPage = 1;  // Reset to page 1 when size changes
+                    console.log('Page Size Changed:', {
+                        newSize: perPage,
+                        totalRecords: filteredContracts.length,
+                        totalPages: Math.ceil(filteredContracts.length / perPage)
+                    });
+                    displayFilteredContractsPaginated();
                 };
                 
                 window.changePage = function(page) {
-                    // Only if pagination visible (no filter)
-                    if (paginationContainer.style.display !== 'none' && 
-                        searchInput.value.trim() === '' && 
-                        stateSearchSelect.value === '' && 
-                        dateFromInput.value === '' && 
-                        dateToInput.value === '') {
-                        currentPage = page;
-                        console.log('Page Changed:', {
-                            newPage: currentPage,
-                            perPage: perPage
-                        });
-                        displayFilteredContractsPaginated();
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
+                    // Allow page change for both filtered and unfiltered data
+                    currentPage = page;
+                    console.log('Page Changed:', {
+                        newPage: currentPage,
+                        perPage: perPage,
+                        totalPages: totalPages
+                    });
+                    displayFilteredContractsPaginated();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 };
                 
                 // Initial load (no filter)
