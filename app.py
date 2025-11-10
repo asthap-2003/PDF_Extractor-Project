@@ -836,6 +836,7 @@ def contracts_list():
             <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
             <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+            <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
             <style>
                 :root {
                     --primary-color: #1e40af;
@@ -1656,8 +1657,8 @@ def contracts_list():
                         
                         <!-- State Select -->
                         <div style="position: relative; flex: 0 0 auto; min-width: 220px;">
-                            <select id="stateSearchSelect" class="state-search-select" style="width: 100%; height: 38px; padding: 0.5rem 2.5rem 0.5rem 1rem; border: 2px solid #1e40af; border-radius: 6px; font-size: 0.875rem; background: white; cursor: pointer; box-sizing: border-box; appearance: none; background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%231e40af%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1em;">
-                                <option value="">Select State</option>
+                            <select id="stateSearchSelect" class="state-search-select" style="width: 100%; height: 38px;">
+                                <option value="">Select Seller State</option>
                                 <option value="Andhra Pradesh">Andhra Pradesh</option>
                                 <option value="Arunachal Pradesh">Arunachal Pradesh</option>
                                 <option value="Assam">Assam</option>
@@ -2273,7 +2274,7 @@ def contracts_list():
                 // Clear All Filters button
                 clearAllFiltersBtn.addEventListener('click', () => {
                     searchInput.value = '';
-                    stateSearchSelect.value = '';
+                    $('#stateSearchSelect').val(null).trigger('change'); // Clear Select2
                     dateFromInput.value = '';
                     dateToInput.value = '';
                     clearAllFiltersBtn.style.display = 'none';
@@ -2323,6 +2324,11 @@ def contracts_list():
                 });
             </script>
             
+            <!-- jQuery (required for Select2) -->
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+            <!-- Select2 JS -->
+            <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+            
             <!-- Flatpickr JS -->
             <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
             <script>
@@ -2345,6 +2351,87 @@ def contracts_list():
                     }
                 });
             </script>
+            
+            <!-- Initialize Select2 for searchable dropdown -->
+            <script>
+                $(document).ready(function() {
+                    $('#stateSearchSelect').select2({
+                        placeholder: "Select Seller State",
+                        allowClear: true,
+                        width: '100%',
+                        theme: 'default',
+                        dropdownAutoWidth: true,
+                        minimumResultsForSearch: 0, // Always show search box
+                    });
+                    
+                    // Trigger change event for filter functionality
+                    $('#stateSearchSelect').on('change', function() {
+                        updateClearAllButton();
+                        applyFilters();
+                    });
+                });
+            </script>
+            
+            <!-- Custom CSS for Select2 styling -->
+            <style>
+                .select2-container--default .select2-selection--single {
+                    height: 38px !important;
+                    border: 2px solid #1e40af !important;
+                    border-radius: 6px !important;
+                    padding: 0.5rem 1rem !important;
+                    font-size: 0.875rem !important;
+                    background: white !important;
+                }
+                
+                .select2-container--default .select2-selection--single .select2-selection__rendered {
+                    line-height: 22px !important;
+                    padding: 0 !important;
+                    color: #1e293b !important;
+                }
+                
+                .select2-container--default .select2-selection--single .select2-selection__arrow {
+                    height: 34px !important;
+                    right: 5px !important;
+                }
+                
+                .select2-container--default .select2-selection--single .select2-selection__arrow b {
+                    border-color: #1e40af transparent transparent transparent !important;
+                }
+                
+                .select2-dropdown {
+                    border: 2px solid #1e40af !important;
+                    border-radius: 6px !important;
+                    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.15) !important;
+                }
+                
+                .select2-search--dropdown .select2-search__field {
+                    border: 2px solid #1e40af !important;
+                    border-radius: 4px !important;
+                    padding: 0.5rem !important;
+                    font-size: 0.875rem !important;
+                }
+                
+                .select2-search--dropdown .select2-search__field:focus {
+                    outline: none !important;
+                    border-color: #3b82f6 !important;
+                    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1) !important;
+                }
+                
+                .select2-results__option {
+                    padding: 0.5rem 1rem !important;
+                    font-size: 0.875rem !important;
+                }
+                
+                .select2-results__option--highlighted {
+                    background-color: #1e40af !important;
+                    color: white !important;
+                }
+                
+                .select2-container--default .select2-results__option--selected {
+                    background-color: #e0e7ff !important;
+                    color: #1e293b !important;
+                }
+            </style>
         </body>
         </html>
         '''
