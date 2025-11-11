@@ -2377,20 +2377,38 @@ def contracts_list():
             <!-- Flatpickr JS -->
             <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
             <script>
-                // Initialize Flatpickr for date inputs with DD/MM/YYYY format
-                flatpickr("#dateFrom", {
+                // Initialize Flatpickr for date inputs with DD/MM/YYYY format and validation
+                let fromDatePicker = flatpickr("#dateFrom", {
                     dateFormat: "d/m/Y",
                     allowInput: true,
                     onChange: function(selectedDates, dateStr, instance) {
+                        // Update To date minDate to From date
+                        if (selectedDates.length > 0) {
+                            toDatePicker.set('minDate', selectedDates[0]);
+                        }
                         updateClearAllButton();
                         applyFilters();
                     }
                 });
                 
-                flatpickr("#dateTo", {
+                let toDatePicker = flatpickr("#dateTo", {
                     dateFormat: "d/m/Y",
                     allowInput: true,
                     onChange: function(selectedDates, dateStr, instance) {
+                        // Validate: To date should not be before From date
+                        const fromDateValue = document.getElementById('dateFrom').value;
+                        if (fromDateValue && selectedDates.length > 0) {
+                            const fromParts = fromDateValue.split('/');
+                            const fromDate = new Date(fromParts[2], fromParts[1] - 1, fromParts[0]);
+                            const toDate = selectedDates[0];
+                            
+                            if (toDate < fromDate) {
+                                alert('❌ Invalid To Date!\\n\\nTo Date cannot be before From Date.\\n\\nFrom Date: ' + fromDateValue + '\\nTo Date: ' + dateStr);
+                                // Clear the invalid to date
+                                instance.clear();
+                                return;
+                            }
+                        }
                         updateClearAllButton();
                         applyFilters();
                     }
