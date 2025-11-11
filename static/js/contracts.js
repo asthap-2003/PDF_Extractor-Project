@@ -624,3 +624,57 @@ window.changePage = function(page) {
     displayFilteredContractsPaginated();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
+
+// ============================================
+// LOGS FUNCTIONALITY
+// ============================================
+
+/**
+ * Open logs modal
+ */
+window.openLogsModal = function() {
+    document.getElementById('logsModal').style.display = 'block';
+    loadLogs();
+};
+
+/**
+ * Load logs from API
+ */
+window.loadLogs = function() {
+    const logsContent = document.getElementById('logsContent');
+    logsContent.textContent = 'Loading logs...';
+    
+    fetch('/api/logs')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                logsContent.textContent = data.logs || 'No logs available.';
+            } else {
+                logsContent.textContent = 'Error loading logs: ' + data.message;
+            }
+        })
+        .catch(error => {
+            logsContent.textContent = 'Error loading logs: ' + error.message;
+        });
+};
+
+// ============================================
+// EVENT LISTENERS
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Setup logs button
+    const logsBtn = document.getElementById('logsBtn');
+    if (logsBtn) {
+        logsBtn.addEventListener('click', openLogsModal);
+    }
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('logsModal');
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    };
+});
+

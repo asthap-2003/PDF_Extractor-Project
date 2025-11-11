@@ -1398,6 +1398,52 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/api/logs', methods=['GET'])
+def get_logs():
+    """
+    API endpoint to fetch failed file logs from logfile.txt
+    Returns: JSON with only failed file names
+    """
+    try:
+        log_file_path = 'logfile.txt'
+        if os.path.exists(log_file_path):
+            with open(log_file_path, 'r', encoding='utf-8') as f:
+                all_lines = f.readlines()
+            
+            # Filter only failed file logs
+            failed_logs = []
+            for line in all_lines:
+                line = line.strip()
+                # Check if line contains failure keywords
+                if 'Failed to save' in line or 'Error processing' in line:
+                    # Extract timestamp and filename
+                    if '] ' in line:
+                        timestamp_part = line.split('] ')[0] + ']'
+                        message_part = line.split('] ', 1)[1]
+                        
+                        # Extract filename from message
+                        if 'Failed to save' in message_part:
+                            filename = message_part.replace('Failed to save ', '').strip()
+                            failed_logs.append(f"{timestamp_part} ❌ {filename}")
+                        elif 'Error processing' in message_part:
+                            # Extract filename before the colon
+                            if ':' in message_part:
+                                filename = message_part.split(':')[0].replace('Error processing ', '').strip()
+                                error_msg = message_part.split(':', 1)[1].strip()
+                                failed_logs.append(f"{timestamp_part} ❌ {filename} - {error_msg}")
+            
+            if failed_logs:
+                log_content = '\n'.join(failed_logs)
+            else:
+                log_content = 'No failed files found. All PDFs processed successfully! ✅'
+            
+            return jsonify({'success': True, 'logs': log_content})
+        else:
+            return jsonify({'success': False, 'message': 'Log file not found'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+
 # ============================================
 # APPLICATION ENTRY POINT
 # ============================================
