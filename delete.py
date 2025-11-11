@@ -525,12 +525,50 @@ def extract_products(text):
 
 
 def extract_total_order_value(text):
-    pattern = re.compile(r"Total Order Value\s*\(in INR\)\s*[:\-]?\s*(.+)", re.IGNORECASE)
-    match = pattern.search(text)
-    if match:
-        value = match.group(1).strip()
-        value = re.split(r'[\(\|]', value)[0].strip()
-        return clean_hindi(value)
+    """
+    Extract total order value from contract text.
+    Reads line by line and extracts value after "Total Order Value (in INR)" and before "|".
+    """
+    # Split text into lines for line-by-line processing
+    lines = text.split('\n')
+    
+    for i, line in enumerate(lines):
+        # Check if current line contains "Total Order Value (in INR)"
+        if re.search(r'Total Order Value\s*\(in INR\)', line, re.IGNORECASE):
+            # Extract value from same line after the label
+            pattern = re.compile(r'Total Order Value\s*\(in INR\)\s*[:\-]?\s*([^|\n]+)', re.IGNORECASE)
+            match = pattern.search(line)
+            if match:
+                value = match.group(1).strip()
+                # Remove any trailing special characters
+                value = re.sub(r'[^\d,.\s]+$', '', value).strip()
+                # Clean Hindi characters
+                value = clean_hindi(value)
+                # Remove duplicate consecutive characters (commas, digits)
+                value = re.sub(r'(.)\1+', r'\1', value)
+                # Clean up extra spaces
+                value = ' '.join(value.split())
+                return value
+            
+            # If not found in same line, check next line
+            if i + 1 < len(lines):
+                next_line = lines[i + 1].strip()
+                # Extract value before "|" symbol if present
+                if '|' in next_line:
+                    value = next_line.split('|')[0].strip()
+                else:
+                    value = next_line
+                # Remove any trailing special characters
+                value = re.sub(r'[^\d,.\s]+$', '', value).strip()
+                # Clean Hindi characters
+                value = clean_hindi(value)
+                # Remove duplicate consecutive characters (commas, digits)
+                value = re.sub(r'(.)\1+', r'\1', value)
+                # Clean up extra spaces
+                value = ' '.join(value.split())
+                if value:
+                    return value
+    
     return ""
 
 
@@ -1301,7 +1339,8 @@ def extract_total_order_value(text):
     Extract total order value from contract text.
     
     Searches for "Total Order Value (in INR)" followed by amount.
-    Cleans extracted value by removing trailing special characters.
+    Extracts value that appears after "Total Order Value (in INR)" and before the next "|" character.
+    Cleans extracted value by removing special characters and duplicate characters.
     
     Args:
         text: Full contract text
@@ -1309,12 +1348,42 @@ def extract_total_order_value(text):
     Returns:
         Cleaned total order value string, or "NOT FOUND" if not present
     """
-    pattern = re.compile(r"Total Order Value\s*\(in INR\)\s*[:\-]?\s*(.+)", re.IGNORECASE)
-    match = pattern.search(text)
-    if match:
-        value = match.group(1).strip()
-        value = re.split(r'[\(\|]', value)[0].strip()
-        return value
+    # Split text into lines for line-by-line processing
+    lines = text.split('\n')
+    
+    for i, line in enumerate(lines):
+        # Check if current line contains "Total Order Value (in INR)"
+        if re.search(r'Total Order Value\s*\(in INR\)', line, re.IGNORECASE):
+            # Extract value from same line after the label
+            pattern = re.compile(r'Total Order Value\s*\(in INR\)\s*[:\-]?\s*([^|\n]+)', re.IGNORECASE)
+            match = pattern.search(line)
+            if match:
+                value = match.group(1).strip()
+                # Remove any trailing special characters
+                value = re.sub(r'[^\d,.\s]+$', '', value).strip()
+                # Remove duplicate consecutive characters (commas, digits)
+                value = re.sub(r'(.)\1+', r'\1', value)
+                # Clean up extra spaces
+                value = ' '.join(value.split())
+                return value
+            
+            # If not found in same line, check next line
+            if i + 1 < len(lines):
+                next_line = lines[i + 1].strip()
+                # Extract value before "|" symbol if present
+                if '|' in next_line:
+                    value = next_line.split('|')[0].strip()
+                else:
+                    value = next_line
+                # Remove any trailing special characters
+                value = re.sub(r'[^\d,.\s]+$', '', value).strip()
+                # Remove duplicate consecutive characters (commas, digits)
+                value = re.sub(r'(.)\1+', r'\1', value)
+                # Clean up extra spaces
+                value = ' '.join(value.split())
+                if value:
+                    return value
+    
     return "NOT FOUND"
 
 
