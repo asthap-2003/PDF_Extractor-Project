@@ -114,20 +114,20 @@
 <body>
     <div class="container">
         <h1>Search Contracts</h1>
-        
+
         <div class="nav-links">
             <a href="/">Upload New PDF</a>
             <a href="/contracts">View All Contracts</a>
         </div>
-        
+
         <div class="search-form">
             <form method="GET" action="/search">
-                <input type="text" name="q" placeholder="Search by organisation, seller, product, or filename..." 
+                <input type="text" name="q" placeholder="Search by organisation, seller, product, or filename..."
                        value="{{ query }}" required>
                 <button type="submit">Search</button>
             </form>
         </div>
-        
+
         {% if query %}
             <div class="search-results">
                 {% if contracts %}
@@ -183,4 +183,4 @@
         {% endif %}
     </div>
 </body>
-</html> 
+</html>

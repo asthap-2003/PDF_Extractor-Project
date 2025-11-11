@@ -109,7 +109,7 @@
 <body>
     <div class="container">
         <h1>Contract Details</h1>
-        
+
         <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -120,13 +120,13 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <div class="nav-links">
             <a href="/">Upload New PDF</a>
             <a href="/contracts">View All Contracts</a>
             <a href="/search">Search Contracts</a>
         </div>
-        
+
         {% if contract %}
             <div class="contract-info">
                 <div class="section">
@@ -148,7 +148,7 @@
                         <span class="info-value">{{ contract[22] }}</span>
                     </div>
                 </div>
-                
+
                 <div class="section">
                     <h3>Organisation Details</h3>
                     <div class="info-row">
@@ -160,7 +160,7 @@
                         <span class="info-value">{{ contract[4] or 'N/A' }}</span>
                     </div>
                 </div>
-                
+
                 <div class="section">
                     <h3>Buyer Details</h3>
                     <div class="info-row">
@@ -184,7 +184,7 @@
                         <span class="info-value">{{ contract[9] or 'N/A' }}</span>
                     </div>
                 </div>
-                
+
                 <div class="section">
                     <h3>Seller Details</h3>
                     <div class="info-row">
@@ -208,7 +208,7 @@
                         <span class="info-value">{{ contract[14] or 'N/A' }}</span>
                     </div>
                 </div>
-                
+
                 <div class="section">
                     <h3>Product Details</h3>
                     <div class="info-row">
@@ -233,7 +233,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="extracted-text">
                 <h3>Extracted Text</h3>
                 <div class="text-content">{{ contract[20] or 'No text extracted' }}</div>
@@ -243,4 +243,4 @@
         {% endif %}
     </div>
 </body>
-</html> 
+</html>

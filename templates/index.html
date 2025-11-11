@@ -57,7 +57,7 @@
             border: 1px solid var(--border-color);
         }
 
-     
+
         .header {
             background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
             color: white;
@@ -420,7 +420,7 @@
             width: 100%;
             height: 100%;
             cursor: pointer;
-            display: none; 
+            display: none;
         }
         }
     </style>
@@ -429,7 +429,7 @@
     <div class="container">
         <div class="header">
             <div class="header-content">
-            
+
                 <h1><img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiByeD0iOCIgZmlsbD0iIzFENzVGRiIvPgo8dGV4dCB4PSIyMCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5HRU08L3RleHQ+Cjwvc3ZnPgo=" alt="GEM Logo" style="width: 35px; height: 35px; vertical-align: middle;"> GEM Contract Data Extractor</h1>
             </div>
         </div>
@@ -437,7 +437,7 @@
         <div class="content">
             <form method="POST" enctype="multipart/form-data" class="upload-form" id="uploadForm">
                 <div class="file-upload-area" id="uploadArea">
-                
+
                     <div class="upload-icon">
                      <input type="file" name="pdf" accept=".pdf" multiple required class="file-input" id="fileInput" style="display:none;">
                         <i class="fas fa-cloud-upload-alt" style="color:#1e40af;"></i>
@@ -445,19 +445,19 @@
                     <div class="upload-text">Drop your PDF files here</div>
                     <div class="upload-hint">or click to browse files (multiple files supported)</div>
                 </div>
-                
+
                 <div class="selected-files" id="selectedFiles"></div>
-                
+
                 <button type="submit" class="submit-btn" id="submitBtn" disabled>
                     <i class="fas fa-upload"></i> Upload & Extract Data
                 </button>
-                
+
                 <div class="loading" id="loading">
                     <div class="spinner"></div>
                     <p style="color: var(--text-secondary);">Processing your documents...</p>
                 </div>
             </form>
-            
+
 
             <div class="view-contracts">
                 <a href="/contracts">

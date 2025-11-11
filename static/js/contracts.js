@@ -22,7 +22,7 @@ function initializeContractsData(contractsData, itemsPerPage) {
     totalRecords = allContracts.length;
     totalPages = Math.ceil(totalRecords / perPage);
     filteredContracts = [...allContracts];
-    
+
     // Initialize DOM elements
     searchInput = document.getElementById('searchInput');
     clearSearchBtn = document.getElementById('clearSearchBtn');
@@ -33,13 +33,13 @@ function initializeContractsData(contractsData, itemsPerPage) {
     clearAllFiltersBtn = document.getElementById('clearAllFiltersBtn');
     tableBody = document.querySelector('tbody');
     paginationContainer = document.getElementById('pagination-container');
-    
+
     // Set up event listeners
     setupEventListeners();
-    
+
     // Initialize plugins
     initializePlugins();
-    
+
     // Initial display
     displayFilteredContractsPaginated();
 }
@@ -48,7 +48,7 @@ function initializeContractsData(contractsData, itemsPerPage) {
 function generatePaginationHTML(currentPage, totalPages, perPage, totalRecords, availableSizes = [5, 10, 50, 100]) {
     const startRecord = (currentPage - 1) * perPage + 1;
     const endRecord = Math.min(currentPage * perPage, totalRecords);
-    
+
     // Inline styles for consistency
     const mainContainerStyle = 'style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem 1rem; background: rgba(255, 255, 255, 0.98); border-radius: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);"';
     const rowStyle = 'style="display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; padding: 0.3rem 0;"';
@@ -60,42 +60,42 @@ function generatePaginationHTML(currentPage, totalPages, perPage, totalRecords, 
     const btnDisabledStyle = 'style="display: inline-flex; align-items: center; justify-content: center; padding: 0.6rem 1rem; border: 1px solid #e2e8f0; background: #f1f5f9; color: #94a3b8; border-radius: 6px; font-size: 0.875rem; font-weight: 600; min-width: 2.5rem; opacity: 0.4; cursor: not-allowed;"';
     const ellipsisStyle = 'style="padding: 0.6rem 0.5rem; color: #64748b; font-weight: 600; font-size: 0.875rem;"';
     const selectorStyle = 'style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.875rem; color: #1e293b; font-weight: 600; white-space: nowrap;"';
-    
+
     let html = '<div ' + mainContainerStyle + '>';
-    
+
     // Row 1: Showing info (left) + Pagination buttons (center) + Page X of Y (right)
     html += '<div ' + rowStyle + '>' +
             '<span ' + summaryStyle + '>' +
                 '<i class="fas fa-info-circle"></i>' +
                 'Showing ' + startRecord + ' to ' + endRecord + ' of ' + totalRecords + ' records' +
             '</span>';
-    
+
     // Pagination controls in center
     html += '<div ' + controlsContainerStyle + '>';
-    
+
     // First button
     if (currentPage > 1) {
         html += '<a href="#" onclick="changePage(1); return false;" class="pagination-btn" ' + btnStyle + ' title="First Page"><i class="fas fa-angle-double-left"></i></a>';
     } else {
         html += '<span class="pagination-btn disabled" ' + btnDisabledStyle + ' title="First Page"><i class="fas fa-angle-double-left"></i></span>';
     }
-    
+
     // Previous button
     if (currentPage > 1) {
         html += '<a href="#" onclick="changePage(' + (currentPage - 1) + '); return false;" class="pagination-btn" ' + btnStyle + ' title="Previous Page"><i class="fas fa-chevron-left"></i></a>';
     } else {
         html += '<span class="pagination-btn disabled" ' + btnDisabledStyle + ' title="Previous Page"><i class="fas fa-chevron-left"></i></span>';
     }
-    
+
     // Page numbers
     let startPage = Math.max(1, currentPage - 2);
     let endPage = Math.min(totalPages, currentPage + 2);
-    
+
     if (startPage > 1) {
         html += '<a href="#" onclick="changePage(1); return false;" class="pagination-btn" ' + btnStyle + '>1</a>';
         if (startPage > 2) html += '<span class="pagination-ellipsis" ' + ellipsisStyle + '>...</span>';
     }
-    
+
     for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
         if (pageNum === currentPage) {
             html += '<span class="pagination-btn active" ' + btnActiveStyle + '>' + pageNum + '</span>';
@@ -103,53 +103,53 @@ function generatePaginationHTML(currentPage, totalPages, perPage, totalRecords, 
             html += '<a href="#" onclick="changePage(' + pageNum + '); return false;" class="pagination-btn" ' + btnStyle + '>' + pageNum + '</a>';
         }
     }
-    
+
     if (endPage < totalPages) {
         if (endPage < totalPages - 1) html += '<span class="pagination-ellipsis" ' + ellipsisStyle + '>...</span>';
         html += '<a href="#" onclick="changePage(' + totalPages + '); return false;" class="pagination-btn" ' + btnStyle + '>' + totalPages + '</a>';
     }
-    
+
     // Next button
     if (currentPage < totalPages) {
         html += '<a href="#" onclick="changePage(' + (currentPage + 1) + '); return false;" class="pagination-btn" ' + btnStyle + ' title="Next Page"><i class="fas fa-chevron-right"></i></a>';
     } else {
         html += '<span class="pagination-btn disabled" ' + btnDisabledStyle + ' title="Next Page"><i class="fas fa-chevron-right"></i></span>';
     }
-    
+
     // Last button
     if (currentPage < totalPages) {
         html += '<a href="#" onclick="changePage(' + totalPages + '); return false;" class="pagination-btn" ' + btnStyle + ' title="Last Page"><i class="fas fa-angle-double-right"></i></a>';
     } else {
         html += '<span class="pagination-btn disabled" ' + btnDisabledStyle + ' title="Last Page"><i class="fas fa-angle-double-right"></i></span>';
     }
-    
+
     html += '</div>';
-    
+
     // Page X of Y on the right
     html += '<span ' + pagesStyle + '>' +
                 '<i class="fas fa-bookmark"></i> Page ' + currentPage + ' of ' + totalPages +
             '</span>';
-    
+
     html += '</div>';
-    
+
     // Row 2: Page size selector
     html += '<div style="display: flex; justify-content: center; align-items: center; padding: 0.3rem 0;">' +
             '<div ' + selectorStyle + '>' +
                 '<label for="pageSize">Show:</label>' +
                 '<select id="pageSize" onchange="changePageSize(this.value)" style="padding: 0.4rem 1rem; border: 1px solid #e2e8f0; border-radius: 6px; background: white; color: #1e293b; font-size: 0.875rem; cursor: pointer; font-weight: 600; min-width: 80px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);">';
-    
+
     availableSizes.forEach(size => {
         const selected = size === perPage ? 'selected' : '';
         html += '<option value="' + size + '" ' + selected + '>' + size + '</option>';
     });
-    
+
     html += '</select>' +
             '<span>per page</span>' +
         '</div>' +
     '</div>';
-    
+
     html += '</div>';
-    
+
     return html;
 }
 
@@ -157,15 +157,15 @@ function generatePaginationHTML(currentPage, totalPages, perPage, totalRecords, 
 function displayFilteredContractsPaginated() {
     perPage = originalPerPage;
     totalPages = Math.ceil(filteredContracts.length / perPage);
-    
+
     if (currentPage > totalPages) {
         currentPage = 1;
     }
-    
+
     const start = (currentPage - 1) * perPage;
     const end = start + perPage;
     const pageContracts = filteredContracts.slice(start, end);
-    
+
     if (pageContracts.length === 0) {
         tableBody.innerHTML = `
             <tr>
@@ -181,7 +181,7 @@ function displayFilteredContractsPaginated() {
         paginationContainer.style.display = 'none';
         return;
     }
-    
+
     let html = '';
     pageContracts.forEach((contract, index) => {
         const globalIndex = start + index + 1;
@@ -251,9 +251,9 @@ function displayFilteredContractsPaginated() {
             </tr>
         `;
     });
-    
+
     tableBody.innerHTML = html;
-    
+
     totalRecords = filteredContracts.length;
     totalPages = Math.ceil(totalRecords / perPage);
     paginationContainer.innerHTML = generatePaginationHTML(currentPage, totalPages, perPage, totalRecords);
@@ -263,7 +263,7 @@ function displayFilteredContractsPaginated() {
 // Apply filters
 function applyFilters(resetPage = true) {
     let tempFiltered = [...allContracts];
-    
+
     // Search filter
     const searchTerm = searchInput.value.toLowerCase().trim();
     if (searchTerm) {
@@ -292,15 +292,15 @@ function applyFilters(resetPage = true) {
                    (contract.text_format && contract.text_format.toLowerCase().includes(searchTerm));
         });
     }
-    
+
     // State filter
     const selectedState = stateSearchSelect.value.toLowerCase().trim();
     if (selectedState) {
-        tempFiltered = tempFiltered.filter(contract => 
+        tempFiltered = tempFiltered.filter(contract =>
             contract.seller_address && contract.seller_address.toLowerCase().includes(selectedState)
         );
     }
-    
+
     // Date filter
     function parseDDMMYYYY(dateStr) {
         if (!dateStr) return null;
@@ -310,10 +310,10 @@ function applyFilters(resetPage = true) {
         }
         return null;
     }
-    
+
     const fromDate = parseDDMMYYYY(dateFromInput.value);
     const toDate = parseDDMMYYYY(dateToInput.value);
-    
+
     if (fromDate || toDate) {
         tempFiltered = tempFiltered.filter(contract => {
             if (!contract.date) return false;
@@ -323,22 +323,22 @@ function applyFilters(resetPage = true) {
             return true;
         });
     }
-    
+
     filteredContracts = tempFiltered;
     if (resetPage) {
         currentPage = 1;
     }
-    
+
     displayFilteredContractsPaginated();
 }
 
 // Update Clear All button visibility
 function updateClearAllButton() {
-    const hasFilters = searchInput.value.trim() !== '' || 
-                      stateSearchSelect.value !== '' || 
-                      dateFromInput.value !== '' || 
+    const hasFilters = searchInput.value.trim() !== '' ||
+                      stateSearchSelect.value !== '' ||
+                      dateFromInput.value !== '' ||
                       dateToInput.value !== '';
-    
+
     clearAllFiltersBtn.style.display = hasFilters ? 'flex' : 'none';
 }
 
@@ -353,24 +353,24 @@ function setupEventListeners() {
             updateClearAllButton();
         }, 300);
     });
-    
+
     // State select
     stateSearchSelect.addEventListener('change', () => {
         applyFilters();
         updateClearAllButton();
     });
-    
+
     // Date inputs
     dateFromInput.addEventListener('change', () => {
         applyFilters();
         updateClearAllButton();
     });
-    
+
     dateToInput.addEventListener('change', () => {
         applyFilters();
         updateClearAllButton();
     });
-    
+
     // Clear all filters button
     clearAllFiltersBtn.addEventListener('click', () => {
         searchInput.value = '';
@@ -382,27 +382,27 @@ function setupEventListeners() {
         clearAllFiltersBtn.style.display = 'none';
         applyFilters();
     });
-    
+
     // Export button
     document.getElementById('exportBtn').addEventListener('click', function() {
         const dataToExport = filteredContracts;
-        
+
         if (dataToExport.length === 0) {
             alert('No data to export');
             return;
         }
-        
+
         const contractIds = dataToExport.map(c => c.contract_id);
-        
+
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '/contracts/export';
-        
+
         const input = document.createElement('input');
         input.type = 'hidden';
         input.name = 'contract_ids';
         input.value = JSON.stringify(contractIds);
-        
+
         form.appendChild(input);
         document.body.appendChild(form);
         form.submit();
@@ -424,7 +424,7 @@ function initializePlugins() {
             applyFilters();
         }
     });
-    
+
     toDatePicker = flatpickr("#dateTo", {
         dateFormat: "d/m/Y",
         allowInput: true,
@@ -434,7 +434,7 @@ function initializePlugins() {
                 const fromParts = fromDateValue.split('/');
                 const fromDate = new Date(fromParts[2], fromParts[1] - 1, fromParts[0]);
                 const toDate = selectedDates[0];
-                
+
                 if (toDate < fromDate) {
                     alert('❌ Invalid To Date!\n\nTo Date cannot be before From Date.\n\nFrom Date: ' + fromDateValue + '\nTo Date: ' + dateStr);
                     instance.clear();
@@ -445,7 +445,7 @@ function initializePlugins() {
             applyFilters();
         }
     });
-    
+
     // Select2 initialization
     $('#stateSearchSelect').select2({
         placeholder: "Select Seller State",
@@ -455,7 +455,7 @@ function initializePlugins() {
         dropdownAutoWidth: true,
         minimumResultsForSearch: 0
     });
-    
+
     $('#stateSearchSelect').on('change', function() {
         updateClearAllButton();
         applyFilters();
