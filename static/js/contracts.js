@@ -658,6 +658,31 @@ window.loadLogs = function() {
         });
 };
 
+/**
+ * Clear all logs
+ */
+window.clearLogs = function() {
+    if (confirm('Are you sure you want to clear all failed file logs? This action cannot be undone.')) {
+        fetch('/api/logs/clear', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('logsContent').textContent = 'All logs cleared successfully! ✅';
+                setTimeout(() => {
+                    loadLogs();
+                }, 1500);
+            } else {
+                alert('Error clearing logs: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error clearing logs: ' + error.message);
+        });
+    }
+};
+
 // ============================================
 // EVENT LISTENERS
 // ============================================

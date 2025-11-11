@@ -1444,6 +1444,25 @@ def get_logs():
         return jsonify({'success': False, 'message': str(e)})
 
 
+@app.route('/api/logs/clear', methods=['POST'])
+def clear_logs():
+    """
+    API endpoint to clear all logs from logfile.txt
+    Returns: JSON with success status
+    """
+    try:
+        log_file_path = 'logfile.txt'
+        if os.path.exists(log_file_path):
+            # Clear the file by opening in write mode
+            with open(log_file_path, 'w', encoding='utf-8') as f:
+                f.write('')
+            return jsonify({'success': True, 'message': 'All logs cleared successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Log file not found'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+
 # ============================================
 # APPLICATION ENTRY POINT
 # ============================================

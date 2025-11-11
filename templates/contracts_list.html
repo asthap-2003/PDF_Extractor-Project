@@ -40,12 +40,10 @@
             <button id="exportBtn" class="btn btn-primary" style="padding: 11px 1rem; font-size: 0.875rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary-color); border: none; cursor: pointer;">
                 <i class="fas fa-file-excel"></i> Export to Excel
             </button>
-            <button id="logsBtn" class="btn btn-warning" style="padding: 0.5rem 1rem; font-size: 0.875rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem; background: #d97706; border: none; cursor: pointer; color: white;">
+            <button id="logsBtn" class="btn btn-danger" style="padding: 11px 1rem; font-size: 0.875rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 0.5rem; background: #dc2626; border: none; cursor: pointer; color: white;">
                 <i class="fas fa-file-lines"></i> Logs
             </button>
         </div>
-        
-        <!-- Filters Row -->
         <div class="search-section" style="padding: 1rem 1.5rem; background: white; border-bottom: 1px solid #e2e8f0; margin-left: -17px;">
             <div style="display: flex; gap: 0.75rem; align-items: stretch; flex-wrap: wrap;">
                 <!-- Search Input -->
@@ -152,29 +150,38 @@
     </div>
 
     <!-- Logs Modal -->
-    <div id="logsModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
-        <div style="background-color: white; margin: 5% auto; padding: 0; border-radius: 8px; width: 80%; max-width: 900px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+    <div id="logsModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(4px);">
+        <div style="background: white; margin: 0; padding: 0; width: 100%; height: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); display: flex; flex-direction: column;">
             <!-- Modal Header -->
-            <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px 8px 0 0;">
-                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600;">
-                    <i class="fas fa-file-lines" style="margin-right: 0.5rem;"></i>Processing Logs
+            <div style="padding: 0.75rem 1.5rem; border-bottom: 2px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #1e40af; color: white; flex-shrink: 0;">
+                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-file-lines"></i>Failed Files Log
                 </h3>
-                <button onclick="document.getElementById('logsModal').style.display='none'" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; padding: 0; line-height: 1; opacity: 0.9; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.9'">
+                <button onclick="document.getElementById('logsModal').style.display='none'" style="background: rgba(255,255,255,0.2); border: none; color: white; font-size: 1.25rem; cursor: pointer; padding: 0.4rem; line-height: 1; border-radius: 6px; transition: all 0.2s; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <!-- Modal Body -->
-            <div style="padding: 1.5rem; max-height: 500px; overflow-y: auto;">
-                <pre id="logsContent" style="background: #f8fafc; padding: 1rem; border-radius: 6px; font-size: 0.875rem; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace; color: #1e293b; border: 1px solid #e2e8f0;">Loading logs...</pre>
+            <div style="padding: 2rem; overflow-y: auto; flex: 1; background: #f8fafc;">
+                <pre id="logsContent" style="background: white; padding: 1.5rem; border-radius: 8px; font-size: 0.9rem; line-height: 1.8; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace; color: #1e293b; border: 2px solid #e2e8f0; min-height: 100%; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">Loading logs...</pre>
             </div>
             <!-- Modal Footer -->
-            <div style="padding: 1rem 1.5rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 0.75rem; background: #f8fafc; border-radius: 0 0 8px 8px;">
-                <button onclick="loadLogs()" style="padding: 0.5rem 1rem; background: #059669; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; display: inline-flex; align-items: center; gap: 0.5rem; transition: background 0.2s;" onmouseover="this.style.background='#047857'" onmouseout="this.style.background='#059669'">
-                    <i class="fas fa-refresh"></i> Refresh
-                </button>
-                <button onclick="document.getElementById('logsModal').style.display='none'" style="padding: 0.5rem 1rem; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: background 0.2s;" onmouseover="this.style.background='#4b5563'" onmouseout="this.style.background='#6b7280'">
-                    Close
-                </button>
+            <div style="padding: 1.25rem 2rem; border-top: 2px solid #e2e8f0; display: flex; justify-content: flex-end; align-items: center; background: white; flex-shrink: 0;">
+                <div style="display: flex; gap: 0.75rem;">
+                    <button onclick="loadLogs()" style="padding: 0.75rem 1.25rem; background: #059669; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;" onmouseover="this.style.background='#047857'" onmouseout="this.style.background='#059669'">
+                        <i class="fas fa-refresh"></i> Refresh
+                    </button>
+                    <button onclick="clearLogs()" style="padding: 0.75rem 1.25rem; background: #dc2626; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'">
+                        <i class="fas fa-trash-alt"></i> Clear Logs
+                    </button>
+                </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
