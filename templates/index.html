@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEM Contract Data Extractor</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #1e40af;
+            --primary-light: #3b82f6;
+            --primary-dark: #1e3a8a;
+            --secondary-color: #64748b;
+            --success-color: #059669;
+            --warning-color: #d97706;
+            --danger-color: #dc2626;
+            --background-color: #f8fafc;
+            --surface-color: #ffffff;
+            --border-color: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: var(--surface-color);
+            border-radius: 10px;
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+     
+        .header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 1rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/><circle cx="10" cy="60" r="0.5" fill="white" opacity="0.1"/><circle cx="90" cy="40" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo {
+            font-size: 4rem;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 1.5rem;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.025em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .content {
+            padding: 2rem 2rem;
+        }
+
+        .upload-form {
+            margin-bottom: 2rem;
+        }
+
+        .file-upload-area {
+            border: 2px dashed #1e40af;
+            border-radius: var(--radius-lg);
+            padding: 3rem 2rem;
+            background: var(--background-color);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .file-upload-area:hover {
+            border-color: var(--primary-color);
+            background: #f1f5f9;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .file-upload-area.dragover {
+            border-color: var(--primary-color);
+            background: #e3f2fd;
+            transform: scale(1.02);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .upload-text {
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .upload-hint {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 400;
+        }
+
+
+        .selected-files {
+            margin-top: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: var(--surface-color);
+            display: none;
+           margin-bottom: 20px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--background-color);
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-name {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            font-weight: 500;
+            flex: 1;
+            margin-right: 1rem;
+        }
+
+        .remove-file {
+            background: var(--danger-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .remove-file:hover {
+            background: #b91c1c;
+            transform: scale(1.1);
+        }
+
+        .submit-btn {
+            background: #1e40af !important;
+            color: white !important;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-md);
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .submit-btn:hover {
+            background: #1e3a8a !important;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .view-contracts {
+            text-align: center;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .view-contracts a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-md);
+            background: rgba(30, 64, 175, 0.05);
+            border: 1px solid rgba(30, 64, 175, 0.1);
+        }
+
+        .view-contracts a:hover {
+            color: var(--primary-dark);
+            transform: translateX(3px);
+            background: rgba(30, 64, 175, 0.1);
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .feature {
+            text-align: center;
+            padding: 1.5rem;
+            border-radius: var(--radius-lg);
+            background: var(--background-color);
+            transition: all 0.3s ease;
+            border: 1px solid var(--border-color);
+        }
+
+        .feature:hover {
+            background: var(--surface-color);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-color);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-size: 1.125rem;
+        }
+
+        .feature-desc {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .extraction-options {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            font-weight: 400;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            padding: 0.4rem;
+            border-radius: var(--radius-md);
+            transition: all 0.2s ease;
+        }
+
+        .checkbox-item:hover {
+            background: var(--background-color);
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary-color);
+            cursor: pointer;
+        }
+
+        .loading {
+            display: none;
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .file-count {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .container {
+                margin: 0;
+            }
+
+            .header {
+                padding: 2rem 1rem;
+            }
+
+            .content {
+                padding: 2rem 1rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .logo {
+                font-size: 3rem;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+
+            .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            display: none; 
+        }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+            
+                <h1><img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiByeD0iOCIgZmlsbD0iIzFENzVGRiIvPgo8dGV4dCB4PSIyMCIgeT0iMjQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5HRU08L3RleHQ+Cjwvc3ZnPgo=" alt="GEM Logo" style="width: 35px; height: 35px; vertical-align: middle;"> GEM Contract Data Extractor</h1>
+            </div>
+        </div>
+
+        <div class="content">
+            <form method="POST" enctype="multipart/form-data" class="upload-form" id="uploadForm">
+                <div class="file-upload-area" id="uploadArea">
+                
+                    <div class="upload-icon">
+                     <input type="file" name="pdf" accept=".pdf" multiple required class="file-input" id="fileInput" style="display:none;">
+                        <i class="fas fa-cloud-upload-alt" style="color:#1e40af;"></i>
+                    </div>
+                    <div class="upload-text">Drop your PDF files here</div>
+                    <div class="upload-hint">or click to browse files (multiple files supported)</div>
+                </div>
+                
+                <div class="selected-files" id="selectedFiles"></div>
+                
+                <button type="submit" class="submit-btn" id="submitBtn" disabled>
+                    <i class="fas fa-upload"></i> Upload & Extract Data
+                </button>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p style="color: var(--text-secondary);">Processing your documents...</p>
+                </div>
+            </form>
+            
+
+            <div class="view-contracts">
+                <a href="/contracts">
+                    <i class="fas fa-list"></i>
+                    View All Contracts
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadForm = document.getElementById('uploadForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const loading = document.getElementById('loading');
+        const selectedFiles = document.getElementById('selectedFiles');
+
+        let selectedFilesList = [];
+        let fileDialogOpen = false;
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files);
+            handleFiles(files);
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            fileDialogOpen = false;
+            const files = Array.from(e.target.files);
+            handleFiles(files);
+        });
+
+        function handleFiles(files) {
+            // Filter only PDF files
+            const pdfFiles = files.filter(file => file.type === 'application/pdf');
+            if (pdfFiles.length === 0) {
+                alert('Please select only PDF files.');
+                return;
+            }
+            selectedFilesList = pdfFiles;
+            updateFileDisplay();
+            updateSubmitButton();
+            // Update file input for form submit
+            const dt = new DataTransfer();
+            selectedFilesList.forEach(file => dt.items.add(file));
+            fileInput.files = dt.files;
+        }
+
+        function updateFileDisplay() {
+            if (selectedFilesList.length === 0) {
+                selectedFiles.style.display = 'none';
+                // Reset upload text/hint
+                const uploadText = uploadArea.querySelector('.upload-text');
+                const uploadHint = uploadArea.querySelector('.upload-hint');
+                uploadText.textContent = 'Drop your PDF files here';
+                uploadHint.textContent = 'or click to browse files (multiple files supported)';
+                return;
+            }
+            selectedFiles.style.display = 'block';
+            selectedFiles.innerHTML = '';
+            selectedFilesList.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <span class="file-name">${file.name}</span>
+                    <button type="button" class="remove-file" onclick="removeFile(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                selectedFiles.appendChild(fileItem);
+            });
+            // Update upload text
+            const uploadText = uploadArea.querySelector('.upload-text');
+            const uploadHint = uploadArea.querySelector('.upload-hint');
+            if (selectedFilesList.length === 1) {
+                uploadText.textContent = selectedFilesList[0].name;
+                uploadHint.textContent = 'Click to change files';
+            } else {
+                uploadText.textContent = `${selectedFilesList.length} files selected`;
+                uploadHint.textContent = 'Click to change files';
+            }
+        }
+
+        window.removeFile = function(index) {
+            selectedFilesList.splice(index, 1);
+            updateFileDisplay();
+            updateSubmitButton();
+            // Update file input for form submit
+            const dt = new DataTransfer();
+            selectedFilesList.forEach(file => dt.items.add(file));
+            fileInput.files = dt.files;
+        }
+
+        function updateSubmitButton() {
+            if (selectedFilesList.length > 0) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="fas fa-upload"></i> Upload & Extract Data (${selectedFilesList.length} files)`;
+            } else {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `<i class="fas fa-upload"></i> Upload & Extract Data`;
+            }
+        }
+
+        // Form submission
+        uploadForm.addEventListener('submit', () => {
+            if (selectedFilesList.length === 0) {
+                alert('Please select at least one PDF file.');
+                return;
+            }
+            submitBtn.style.display = 'none';
+            loading.style.display = 'block';
+        });
+
+        // Click to upload (always open file dialog)
+        uploadArea.addEventListener('click', (e) => {
+            fileInput.click();
+        });
+    </script>
+</body>
+</html>
