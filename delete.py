@@ -100,6 +100,41 @@ def clean_hindi(text):
 # ============================================
 # ADDRESS FUNCTIONS
 # ============================================
+def clean_field_data(text):
+    """
+    Clean extracted field data by removing OCR artifacts.
+    
+    Removes:
+    - CID markers like (cid:71), (cid:92), etc.
+    - Everything after | pipe symbol
+    - Extra whitespace
+    
+    Args:
+        text: Raw field string from PDF
+        
+    Returns:
+        Cleaned field string
+    """
+    if not text:
+        return ""
+    text = str(text).strip()
+    
+    # Remove (cid:XX) patterns - OCR artifacts
+    text = re.sub(r'\(cid:\d+\)', '', text)
+    
+    # Remove everything after | pipe symbol (including the pipe)
+    if '|' in text:
+        text = text.split('|')[0]
+    
+    # Remove any remaining brackets and their content
+    text = re.sub(r'\[.*?\]', '', text)
+    
+    # Clean up multiple spaces
+    text = ' '.join(text.split())
+    
+    return text.strip()
+
+
 def clean_address(text):
     """
     Clean and extract address from OCR text.
@@ -240,11 +275,11 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
             VALUES (%s, %s, %s, %s, %s, %s)
         """, (
             contract_id,
-            clean_hindi(organisation_data.get("Type")),
-            clean_hindi(organisation_data.get("Ministry")),
-            clean_hindi(organisation_data.get("Department")),
-            clean_hindi(organisation_data.get("Organisation Name")),
-            clean_hindi(organisation_data.get("Office Zone"))
+            clean_field_data(clean_hindi(organisation_data.get("Type"))),
+            clean_field_data(clean_hindi(organisation_data.get("Ministry"))),
+            clean_field_data(clean_hindi(organisation_data.get("Department"))),
+            clean_field_data(clean_hindi(organisation_data.get("Organisation Name"))),
+            clean_field_data(clean_hindi(organisation_data.get("Office Zone")))
         ))
 
         # buyers
@@ -253,10 +288,10 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
             VALUES (%s, %s, %s, %s, %s, %s)
         """, (
             contract_id,
-            clean_hindi(buyer_data.get("Designation")),
-            clean_hindi(buyer_data.get("Contact No.")),
-            clean_hindi(buyer_data.get("Email ID")),
-            clean_hindi(buyer_data.get("GSTIN")),
+            clean_field_data(clean_hindi(buyer_data.get("Designation"))),
+            clean_field_data(clean_hindi(buyer_data.get("Contact No."))),
+            clean_field_data(clean_hindi(buyer_data.get("Email ID"))),
+            clean_field_data(clean_hindi(buyer_data.get("GSTIN"))),
             clean_address(buyer_data.get("Address"))
         ))
 
@@ -266,13 +301,13 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             contract_id,
-            clean_hindi(seller_data.get("GeM Seller ID")),
-            clean_hindi(seller_data.get("Company Name")),
-            clean_hindi(seller_data.get("Contact No.")),
-            clean_hindi(seller_data.get("Email ID")),
+            clean_field_data(clean_hindi(seller_data.get("GeM Seller ID"))),
+            clean_field_data(clean_hindi(seller_data.get("Company Name"))),
+            clean_field_data(clean_hindi(seller_data.get("Contact No."))),
+            clean_field_data(clean_hindi(seller_data.get("Email ID"))),
             clean_address(seller_data.get("Address")),
-            clean_hindi(seller_data.get("MSME Registration number")),
-            clean_hindi(seller_data.get("GSTIN"))
+            clean_field_data(clean_hindi(seller_data.get("MSME Registration number"))),
+            clean_field_data(clean_hindi(seller_data.get("GSTIN")))
         ))
 
         # products
@@ -287,14 +322,14 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 contract_id,
-                clean_hindi(product.get("Product Name")),
-                clean_hindi(product.get("Brand")),
-                clean_hindi(product.get("Brand Type")),
-                clean_hindi(product.get("Catalogue Status")),
-                clean_hindi(product.get("Selling As")),
-                clean_hindi(product.get("Category Name & Quadrant")),
-                clean_hindi(product.get("Model")),
-                clean_hindi(product.get("HSN Code"))
+                clean_field_data(clean_hindi(product.get("Product Name"))),
+                clean_field_data(clean_hindi(product.get("Brand"))),
+                clean_field_data(clean_hindi(product.get("Brand Type"))),
+                clean_field_data(clean_hindi(product.get("Catalogue Status"))),
+                clean_field_data(clean_hindi(product.get("Selling As"))),
+                clean_field_data(clean_hindi(product.get("Category Name & Quadrant"))),
+                clean_field_data(clean_hindi(product.get("Model"))),
+                clean_field_data(clean_hindi(product.get("HSN Code")))
             ))
 
         conn.commit()
@@ -397,6 +432,7 @@ def extract_field(text, field_name):
     
     Searches for pattern: "FieldName : Value"
     Extracts value until next field or end of line.
+    Cleans CID markers and pipe symbols.
     
     Args:
         text: Text to search in
@@ -406,16 +442,13 @@ def extract_field(text, field_name):
         Cleaned field value or None if not found
     """
     pattern = re.compile(rf"{re.escape(field_name)}\s*[:\-]\s*(.+?)(?=\n\S|$)", re.IGNORECASE)
-    matches = pattern.findall(text)
-    return matches
-
-
-def extract_field(text, field_name):
-    pattern = re.compile(rf"{re.escape(field_name)}\s*[:\-]\s*(.+?)(?=\n\S|$)", re.IGNORECASE)
     match = pattern.search(text)
     if match:
         value = match.group(1).strip()
-        return clean_hindi(value)
+        # Apply comprehensive cleaning
+        value = clean_field_data(value)
+        value = clean_hindi(value)
+        return value if value else None
     return None
 
 
