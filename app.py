@@ -2291,12 +2291,10 @@ def contracts_list():
                     applyFilters();
                 });
                 
-                // Export filtered/paginated data to Excel
+                // Export filtered data to Excel (all filtered records, not just current page)
                 document.getElementById('exportBtn').addEventListener('click', function() {
-                    // Calculate current page contracts (pagination-aware export)
-                    const start = (currentPage - 1) * perPage;
-                    const end = start + perPage;
-                    const dataToExport = filteredContracts.slice(start, end);
+                    // Export ALL filtered contracts (not just current page)
+                    const dataToExport = filteredContracts;
                     
                     if (dataToExport.length === 0) {
                         alert('No data to export');
@@ -2308,10 +2306,8 @@ def contracts_list():
                     
                     console.log('Exporting:', {
                         totalFiltered: filteredContracts.length,
-                        currentPage: currentPage,
-                        perPage: perPage,
                         exportingCount: contractIds.length,
-                        exportingIds: contractIds
+                        note: 'Exporting ALL filtered data (not paginated)'
                     });
                     
                     // Create form and submit
