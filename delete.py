@@ -793,6 +793,15 @@ def process_unprocessed_pdfs():
                 # Last fallback to regular extraction
                 seller_email = extract_field(combined_text, "Email ID")
             
+            # Extract seller GSTIN from THIRD occurrence (1st=Buyer, 2nd=Other, 3rd=Seller)
+            seller_gstin = extract_field_third_occurrence(combined_text, "GSTIN")
+            if not seller_gstin:
+                # Fallback to second occurrence
+                seller_gstin = extract_field_second_occurrence(combined_text, "GSTIN")
+            if not seller_gstin:
+                # Last fallback to regular extraction
+                seller_gstin = extract_field(combined_text, "GSTIN")
+            
             seller_data = {
                 "GeM Seller ID": extract_field(combined_text, "GeM Seller ID"),
                 "Company Name": extract_field(combined_text, "Company Name"),
@@ -800,7 +809,7 @@ def process_unprocessed_pdfs():
                 "Email ID": seller_email,
                 "Address": seller_address,
                 "MSME Registration number": extract_field(combined_text, "MSME Registration number"),
-                "GSTIN": extract_field(combined_text, "GSTIN"),
+                "GSTIN": seller_gstin,
             }
 
             products_list = extract_products(combined_text)
