@@ -1,3 +1,6 @@
+# ============================================
+# IMPORTS - All required libraries and modules
+# ============================================
 from flask import Flask, request, render_template_string, send_file, redirect, jsonify, session, render_template, url_for
 from functools import wraps
 import json
@@ -24,17 +27,25 @@ import csv
 import xlsxwriter
 
 
+# ============================================
+# FLASK APP CONFIGURATION
+# ============================================
 app = Flask(__name__)
     
 app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
 app.secret_key = 'replace-this-with-a-strong-secret-key'
 
-# Poppler path for pdf2image on Linux
+# Poppler path for pdf2image on Linux (used for OCR)
+
 POPPLER_PATH = "/usr/bin"
 
 
+# ============================================
+# PDF TEXT EXTRACTION FUNCTIONS
+# ============================================
+
 def _extract_text_from_pdf_ocr(pdf_path):
-    """Fallback OCR using pdf2image + pytesseract."""
+   
     try:
         images = convert_from_path(pdf_path, dpi=300, poppler_path=POPPLER_PATH)
     except Exception:
@@ -53,6 +64,11 @@ def _extract_text_from_pdf_ocr(pdf_path):
 
 
 def _extract_complete_text_for_app(pdf_path):
+    """
+    Main text extraction function for PDF files.
+    First tries pdfplumber, if that fails falls back to OCR.
+    Returns extracted text or error message if both methods fail.
+    """
     text = ""
     try:
         with pdfplumber.open(pdf_path) as pdf:
@@ -72,9 +88,20 @@ def _extract_complete_text_for_app(pdf_path):
     if not text.strip():
         text = f"[No text extracted from {os.path.basename(pdf_path)}]"
     return text
+
+
+# ============================================
+# AUTHENTICATION & SESSION MANAGEMENT
+# ============================================
+
 # Simple auth guard to protect all routes except login and static assets
 @app.before_request
 def require_login():
+    """
+    Authentication middleware that runs before every request.
+    Redirects to login page if user is not authenticated.
+    Allows access to login page and static files without authentication.
+    """
     # Allow login page and static files without authentication
     allowed_endpoints = {'login', 'static'}
     if request.endpoint in allowed_endpoints:
@@ -87,6 +114,12 @@ def require_login():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    """
+    Login route - handles user authentication.
+    GET: Renders login page
+    POST: Validates credentials and creates session
+    Credentials: username=yiion308, password=Yiion@308
+    """
     # Static credentials
     valid_username = 'yiion308'
     valid_password = 'Yiion@308'
@@ -101,32 +134,38 @@ def login():
         else:
             return render_template('login.html', error='Invalid credentials')
 
-    # GET
+    # GET request - show login form
     return render_template('login.html')
 
 
 @app.route('/logout')
 def logout():
+    """
+    Logout route - clears user session and redirects to login page.
+    """
     session.pop('logged_in', None)
     return redirect(url_for('login'))
 
 
+# ============================================
+# TESSERACT & POPPLER CONFIGURATION
+# ============================================
 pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 POPPLER_PATH = r"/usr/bin"
 
 
-# # MySQL Database Configuration
-# db_config = {
-#      'host': 'localhost',
-#     'user': 'gem',
-#     'password': 'Y!!0n1z3#',  # Same as in setup_database.py
-#     'database': 'gem'
-# }
 
+
+# Import database configuration from external file
 from db_config import db_config
 
+
+# ============================================
+# PDF REPORT GENERATION FUNCTION
+# ============================================
+
 def generate_pdf_report(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value):
-    """Generate a PDF report from the extracted data"""
+    
     buffer = io.BytesIO()
     
     # Create the PDF object
@@ -341,9 +380,14 @@ def generate_pdf_report(contract_id, filename, organisation_data, buyer_data, se
     buffer.seek(0)
     return buffer
 
+
+# ============================================
+# ROUTE: DOWNLOAD PDF REPORT
+# ============================================
+
 @app.route('/download/<contract_id>')
 def download_pdf(contract_id):
-    """Generate and download PDF report for a contract"""
+    
     try:
         # Connect to database
         conn = mysql.connector.connect(**db_config)
@@ -444,9 +488,14 @@ def download_pdf(contract_id):
         print(f"Error generating PDF: {e}")
         return f"Error generating PDF: {str(e)}", 500
 
+
+# ============================================
+# ROUTE: VIEW ORIGINAL PDF FILE
+# ============================================
+
 @app.route('/view/<contract_id>')
 def view_original_pdf(contract_id):
-    """View the original uploaded PDF file"""
+   
     try:
         # Connect to database
         conn = mysql.connector.connect(**db_config)
@@ -485,8 +534,13 @@ def view_original_pdf(contract_id):
         print(f"Error viewing original PDF: {e}")
         return f"Error viewing original PDF: {str(e)}", 500
 
+
+# ============================================
+# UTILITY FUNCTION: PAGINATION
+# ============================================
+
 def paginate(records, page_size=10):
-    """Simple pagination function as provided by user"""
+   
     total_records = len(records)
     total_pages = (total_records + page_size - 1) // page_size  # ceil division
     current_page = 1
@@ -515,8 +569,13 @@ def paginate(records, page_size=10):
         else:
             print("Invalid command or no more pages.")
 
+
+# ============================================
+# UTILITY CLASS: CUSTOM PAGINATOR
+# ============================================
+
 class Paginator:
-    """Custom pagination class for handling pagination logic"""
+   
     def __init__(self, items, page_size=10):
         self.items = items
         self.page_size = page_size
@@ -543,8 +602,13 @@ class Paginator:
             'end_record': min(current_page * self.page_size, self.total_records)
         }
 
+
+# ============================================
+# UTILITY FUNCTION: GENERATE PAGINATION HTML
+# ============================================
+
 def generate_pagination_html(current_page, total_pages, base_url="?", per_page=5, total_records=0, available_sizes=[5, 10, 50, 100]):
-    """Generate pagination HTML controls with attractive design and page size selector"""
+   
     # Always show the pagination bar, even if one page
     # (User wants to see the bar for navigation/page size change)
     
@@ -651,14 +715,24 @@ def generate_pagination_html(current_page, total_pages, base_url="?", per_page=5
 
     return html
 
+
+# ============================================
+# ROUTE: SERVE LOGO IMAGE
+# ============================================
+
 @app.route('/logo.png')
 def serve_logo():
-    """Serve the GEM logo image"""
+   
     return send_file('logo.png', mimetype='image/png')
+
+
+# ============================================
+# ROUTE: CONTRACTS LIST (MAIN PAGE)
+# ============================================
 
 @app.route('/contracts')
 def contracts_list():
-    """Display all extracted contracts in a table format with custom pagination"""
+   
     try:
         # Get pagination parameters
         page = request.args.get('page', 1, type=int)
@@ -783,9 +857,14 @@ def contracts_list():
     except Exception as e:
         return f"Error loading contracts: {str(e)}"
 
+
+# ============================================
+# ROUTE: EXPORT CONTRACTS TO EXCEL
+# ============================================
         
 @app.route('/contracts/export', methods=['GET', 'POST'])
 def export_contracts_excel():
+   
     try:
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor(dictionary=True)
@@ -936,10 +1015,13 @@ def export_contracts_excel():
         return f"Error exporting: {str(e)}", 500
 
 
+# ============================================
+# ROUTE: CONTRACT DETAILS PAGE
+# ============================================
 
 @app.route('/details/<contract_id>')
 def contract_details(contract_id):
-    """Display detailed view of a specific contract"""
+   
     try:
         # Connect to database
         conn = mysql.connector.connect(**db_config)
@@ -1037,9 +1119,14 @@ def contract_details(contract_id):
         print(f"Error loading contract details: {e}")
         return f"Error loading contract details: {str(e)}", 500
 
+
+# ============================================
+# ROUTE: CONTRACT PRODUCTS PAGE
+# ============================================
+
 @app.route('/products/<contract_id>')
 def contract_products(contract_id):
-    """Display only product details for a specific contract"""
+  
     try:
         # Connect to database
         conn = mysql.connector.connect(**db_config)
@@ -1090,9 +1177,15 @@ def contract_products(contract_id):
     except Exception as e:
         print(f"Error loading product details: {e}")
         return f"Error loading product details: {str(e)}", 500
+
+
+# ============================================
+# API ENDPOINT: GET PRODUCTS BY CONTRACT ID
+# ============================================
+
 @app.route('/api/products/<contract_id>')
 def get_products(contract_id):
-    """API endpoint to get products for a specific contract"""
+   
     try:
         # Connect to database
         conn = mysql.connector.connect(**db_config)
@@ -1132,8 +1225,13 @@ def get_products(contract_id):
             "error": str(e)
         }), 500
 
+
+# ============================================
+# DATABASE FUNCTION: SAVE EXTRACTED DATA
+# ============================================
+
 def save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, text_format):
-    """Save extracted data to MySQL database"""
+    
     conn = None  # Initialize conn to None
     cursor = None  # Initialize cursor to None
     try:
@@ -1218,7 +1316,13 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
                 cursor.close()
             conn.close()
 
+
+# ============================================
+# UTILITY FUNCTION: CLEAN EXTRACTED VALUES
+# ============================================
+
 def clean_value(value):
+   
     if value:
         # Split at "(" or "|" and take only the first part
         value = re.split(r'[\(\|]', value)[0].strip()
@@ -1227,7 +1331,13 @@ def clean_value(value):
         return value if value else None
     return None
 
+
+# ============================================
+# DATA EXTRACTION FUNCTION: PDFPLUMBER METHOD
+# ============================================
+
 def extract_details_with_pdfplumber(pdf_path):
+   
     organisation_fields = {
         "Type": "Type :",
         "Ministry": "Ministry :",
@@ -1411,8 +1521,13 @@ def extract_product_details_ocr(pdf_path):
     return products, total_order_val
 
 
+# ============================================
+# ROUTE: MAIN FILE UPLOAD PAGE (INDEX)
+# ============================================
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
+ 
     if request.method == 'POST':
         files = request.files.getlist('pdf')
         
@@ -1481,10 +1596,11 @@ def index():
             uploaded_files.append(file_path)
             print("✅ Saved:", file_path)
 
+        # Trigger background cleanup process
         if uploaded_files:
             subprocess.Popen(["python3", "delete.py", app.config['UPLOAD_FOLDER']])
             
-            # Render result template
+            # Render result template with success message
             return render_template(
                 'result.html',
                 uploaded_files=uploaded_files,
@@ -1495,10 +1611,11 @@ def index():
     return render_template('index.html')
 
 
+# ============================================
+# APPLICATION ENTRY POINT
+# ============================================
+
 if __name__ == '__main__':
+  
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     app.run(host='0.0.0.0', port=5001)   # debug=False for server
-
-
-
- 
