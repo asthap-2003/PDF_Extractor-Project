@@ -8,6 +8,7 @@ let currentPage = 1;
 let totalRecords = 0;
 let totalPages = 0;
 let filteredContracts = [];
+let newRecordsCount = 0; // Track new records count for notification bell
 
 // DOM elements
 let searchInput, clearSearchBtn, stateSearchSelect, clearStateSearchBtn;
@@ -461,6 +462,154 @@ function initializePlugins() {
         applyFilters();
     });
 }
+
+// Auto-refresh functionality - Check for new records every 10 seconds WITHOUT page reload
+let lastRecordCount = 0;
+
+// Update notification bell count
+function updateNotificationCount(count) {
+    const notificationCountElement = document.getElementById('notificationCount');
+    const notificationBell = document.getElementById('notificationBell');
+    
+    if (notificationCountElement) {
+        if (count > 0) {
+            notificationCountElement.textContent = count;
+            notificationCountElement.classList.add('show');
+            console.log(`Notification bell updated: ${count} new records`);
+        } else {
+            notificationCountElement.classList.remove('show');
+        }
+    }
+}
+
+// Clear notification count when bell is clicked
+document.addEventListener('DOMContentLoaded', function() {
+    const notificationBell = document.getElementById('notificationBell');
+    if (notificationBell) {
+        notificationBell.addEventListener('click', function() {
+            newRecordsCount = 0;
+            updateNotificationCount(0);
+            console.log('Notification count cleared by user click');
+        });
+    }
+});
+
+function checkForNewRecords() {
+    fetch('/api/contracts/count')
+        .then(response => response.json())
+        .then(data => {
+            const currentCount = data.count;
+            console.log(`Checking records - Last: ${lastRecordCount}, Current: ${currentCount}`);
+            
+            // If count increased, fetch new records and add them
+            if (lastRecordCount > 0 && currentCount > lastRecordCount) {
+                const newCount = currentCount - lastRecordCount;
+                console.log(`New records detected: ${newCount} new contract(s)`);
+                
+                // Update notification count
+                newRecordsCount += newCount;
+                updateNotificationCount(newRecordsCount);
+                
+                // Fetch only new contracts (skip=0 for newest records)
+                fetchNewContracts(0, newCount);
+            }
+            
+            lastRecordCount = currentCount;
+        })
+        .catch(error => {
+            console.error('Error checking for new records:', error);
+        });
+}
+
+function fetchNewContracts(skip, limit) {
+    console.log(`Fetching new contracts - Skip: ${skip}, Limit: ${limit}`);
+    fetch(`/api/contracts/new?skip=${skip}&limit=${limit}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('API Response:', data);
+            if (data.success && data.contracts.length > 0) {
+                console.log(`Adding ${data.contracts.length} new contracts to display`);
+                console.log('Before - allContracts:', allContracts.length, 'filteredContracts:', filteredContracts.length);
+                
+                // Add new contracts to the beginning of the array
+                allContracts.unshift(...data.contracts);
+                
+                // ALWAYS add to filtered contracts (they will be filtered if needed)
+                filteredContracts.unshift(...data.contracts);
+                
+                // Update totals
+                totalRecords = allContracts.length;
+                totalPages = Math.ceil(filteredContracts.length / perPage);
+                
+                console.log('After - allContracts:', allContracts.length, 'filteredContracts:', filteredContracts.length);
+                
+                // Show notification
+                showNotification(`${data.contracts.length} new contract(s) added`);
+                
+                // Apply current filters if any
+                applyFilters();
+                
+                // Refresh display WITHOUT page reload
+                displayFilteredContractsPaginated();
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching new contracts:', error);
+        });
+}
+
+function showNotification(message) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #059669;
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        font-weight: 600;
+        animation: slideIn 0.3s ease;
+    `;
+    notification.textContent = '✓ ' + message;
+    
+    // Add animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    `;
+    if (!document.getElementById('notification-style')) {
+        style.id = 'notification-style';
+        document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(notification);
+    
+    // Remove after 4 seconds
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 4000);
+}
+
+// Initialize auto-refresh when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Set initial count
+    fetch('/api/contracts/count')
+        .then(response => response.json())
+        .then(data => {
+            lastRecordCount = data.count;
+        });
+    
+    // Check every 10 seconds
+    setInterval(checkForNewRecords, 10000);
+});
 
 // Global functions for pagination
 window.changePageSize = function(size) {
