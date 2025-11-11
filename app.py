@@ -1160,6 +1160,110 @@ def get_products(contract_id):
 
 
 # ============================================
+# API ENDPOINT: GET CONTRACTS COUNT
+# ============================================
+
+@app.route('/api/contracts/count')
+def get_contracts_count():
+    """
+    API endpoint to get total number of contracts.
+    Used for auto-refresh functionality.
+    """
+    try:
+        # Connect to database
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        
+        # Get count
+        cursor.execute("SELECT COUNT(*) as count FROM contracts")
+        result = cursor.fetchone()
+        count = result[0] if result else 0
+        
+        # Close database connection
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "count": count
+        })
+        
+    except Exception as e:
+        print(f"Error getting contracts count: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "count": 0
+        }), 500
+
+
+@app.route('/api/contracts/new')
+def get_new_contracts():
+    """
+    API endpoint to get newly added contracts.
+    Used for auto-refresh without page reload.
+    """
+    try:
+        skip = int(request.args.get('skip', 0))
+        limit = int(request.args.get('limit', 10))
+        
+        # Connect to database
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get new contracts ordered by upload_time DESC
+        query = """
+            SELECT 
+                c.contract_id,
+                c.filename,
+                c.upload_time,
+                c.total_order_value,
+                c.date,
+                o.organisation_name,
+                o.office_zone,
+                b.designation as buyer_designation,
+                b.contact_no as buyer_contact_no,
+                b.email_id,
+                b.gstin as buyer_gstin,
+                b.address as buyer_address,
+                s.gem_seller_id,
+                s.company_name as seller_company_name,
+                s.contact as seller_contact,
+                s.email as seller_email,
+                s.address as seller_address,
+                GROUP_CONCAT(DISTINCT p.product_name ORDER BY p.id SEPARATOR ', ') as product_names
+            FROM contracts c
+            LEFT JOIN organisations o ON c.contract_id = o.contract_id
+            LEFT JOIN buyers b ON c.contract_id = b.contract_id
+            LEFT JOIN sellers s ON c.contract_id = s.contract_id
+            LEFT JOIN products p ON c.contract_id = p.contract_id
+            GROUP BY c.contract_id
+            ORDER BY c.upload_time DESC
+            LIMIT %s OFFSET %s
+        """
+        
+        cursor.execute(query, (limit, skip))
+        contracts = cursor.fetchall()
+        
+        # Close database connection
+        cursor.close()
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "contracts": contracts
+        })
+        
+    except Exception as e:
+        print(f"Error getting new contracts: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "contracts": []
+        }), 500
+
+
+# ============================================
 # DATABASE FUNCTION: SAVE EXTRACTED DATA
 # ============================================
 
