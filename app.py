@@ -6,9 +6,6 @@ from functools import wraps
 import json
 import os
 import re
-import pdfplumber
-import pytesseract
-from pdf2image import convert_from_path
 from werkzeug.utils import secure_filename
 import mysql.connector
 from mysql.connector import Error
@@ -34,60 +31,6 @@ app = Flask(__name__)
     
 app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
 app.secret_key = 'replace-this-with-a-strong-secret-key'
-
-# Poppler path for pdf2image on Linux (used for OCR)
-
-POPPLER_PATH = "/usr/bin"
-
-
-# ============================================
-# PDF TEXT EXTRACTION FUNCTIONS
-# ============================================
-
-def _extract_text_from_pdf_ocr(pdf_path):
-   
-    try:
-        images = convert_from_path(pdf_path, dpi=300, poppler_path=POPPLER_PATH)
-    except Exception:
-        # Try without explicit poppler_path if that fails
-        images = convert_from_path(pdf_path, dpi=300)
-    full_text = ""
-    for img in images:
-        try:
-            full_text += pytesseract.image_to_string(img, lang='eng+hin') + "\n"
-        except Exception:
-            try:
-                full_text += pytesseract.image_to_string(img) + "\n"
-            except Exception:
-                pass
-    return full_text
-
-
-def _extract_complete_text_for_app(pdf_path):
-    """
-    Main text extraction function for PDF files.
-    First tries pdfplumber, if that fails falls back to OCR.
-    Returns extracted text or error message if both methods fail.
-    """
-    text = ""
-    try:
-        with pdfplumber.open(pdf_path) as pdf:
-            for page in pdf.pages:
-                try:
-                    text += (page.extract_text() or "") + "\n"
-                except Exception:
-                    continue
-    except Exception as e:
-        print(f"pdfplumber open error: {e}")
-    # If pdfplumber gave nothing, try OCR fallback
-    if not text.strip():
-        try:
-            text = _extract_text_from_pdf_ocr(pdf_path)
-        except Exception as e:
-            print(f"OCR fallback error: {e}")
-    if not text.strip():
-        text = f"[No text extracted from {os.path.basename(pdf_path)}]"
-    return text
 
 
 # ============================================
@@ -145,15 +88,6 @@ def logout():
     """
     session.pop('logged_in', None)
     return redirect(url_for('login'))
-
-
-# ============================================
-# TESSERACT & POPPLER CONFIGURATION
-# ============================================
-pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
-POPPLER_PATH = r"/usr/bin"
-
-
 
 
 # Import database configuration from external file
@@ -1164,14 +1098,13 @@ def contract_products(contract_id):
         total_order_value = contract.get("total_order_value")
         filename = contract.get("filename")
         
-        # Render template (reusing contract_detail.html or create products.html if needed)
+        # Render products template with all product details
         return render_template(
-            'contract_detail.html',  # Or create products.html template
+            'products.html',
             contract_id=contract_id,
             products_list=products_list,
             total_order_value=total_order_value,
-            filename=filename,
-            products_only=True  # Flag to show only products section
+            filename=filename
         )
         
     except Exception as e:
@@ -1318,210 +1251,6 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
 
 
 # ============================================
-# UTILITY FUNCTION: CLEAN EXTRACTED VALUES
-# ============================================
-
-def clean_value(value):
-   
-    if value:
-        # Split at "(" or "|" and take only the first part
-        value = re.split(r'[\(\|]', value)[0].strip()
-        # Remove any Hindi or non-essential text that might remain
-        value = re.sub(r'[\u0900-\u097F].*$', '', value).strip()
-        return value if value else None
-    return None
-
-
-# ============================================
-# DATA EXTRACTION FUNCTION: PDFPLUMBER METHOD
-# ============================================
-
-def extract_details_with_pdfplumber(pdf_path):
-   
-    organisation_fields = {
-        "Type": "Type :",
-        "Ministry": "Ministry :",
-        "Department": "Department :",
-        "Organisation Name": "Organisation Name :",
-        "Office Zone": "Office Zone:"
-    }
-    buyer_fields = {
-        "Designation": "Designation :",
-        "Contact No.": "Contact No.",
-        "Email ID": "Email ID :",
-        "GSTIN": "GSTIN :",
-        "Address": "Address :"
-    }
-    seller_fields = {
-        "GeM Seller ID": "GeM Seller ID :",
-        "Company Name": "Company Name :",
-        "Contact No.": "Contact No.",
-        "Email ID": "Email ID :",
-        "Address": "Address :",
-        "MSME Registration number": "MSME Registration number :",
-        "GSTIN": "GSTIN:"
-    }
-    data_org = {key: None for key in organisation_fields}
-    data_buyer = {key: None for key in buyer_fields}
-    data_seller = {key: None for key in seller_fields}
-
-    with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text()
-            if not text:
-                continue
-            lines = text.split('\n')
-
-            # Organisation fields
-            for line in lines:
-                for key, marker in organisation_fields.items():
-                    if not data_org[key] and marker in line:
-                        parts = line.split(marker)
-                        if len(parts) > 1:
-                            data_org[key] = clean_value(parts[1])
-
-            # Buyer fields
-            for line in lines:
-                for key, marker in buyer_fields.items():
-                    if not data_buyer[key] and marker in line:
-                        parts = line.split(marker)
-                        if len(parts) > 1:
-                            data_buyer[key] = clean_value(parts[1])
-
-            # Seller section
-            seller_section_active = False
-            gem_seller_id_found = False
-            for line in lines:
-                if not seller_section_active and any(marker in line for marker in seller_fields.values()):
-                    seller_section_active = True
-                if seller_section_active:
-                    if "GeM Seller ID :" in line:
-                        gem_seller_id_found = True
-                        parts = line.split("GeM Seller ID :")
-                        if len(parts) > 1:
-                            data_seller["GeM Seller ID"] = clean_value(parts[1])
-                    for key, marker in seller_fields.items():
-                        if key in ["Contact No.", "Email ID"] and not gem_seller_id_found:
-                            continue
-                        if not data_seller[key] and marker in line:
-                            parts = line.split(marker)
-                            if len(parts) > 1:
-                                data_seller[key] = clean_value(parts[1])
-            if (all(data_org.values()) and all(data_buyer.values()) and all(data_seller.values())):
-                break
-    return data_org, data_buyer, data_seller
-
-def extract_text_from_pdf_ocr(pdf_path):
-    images = convert_from_path(pdf_path, dpi=300, poppler_path=POPPLER_PATH)
-    full_text = ""
-    for img in images:
-        text = pytesseract.image_to_string(img, lang='eng')
-        full_text += text + "\n"
-    return full_text
-
-def extract_complete_pdf_text(pdf_path):
-    """Extract complete text from PDF using both pdfplumber and OCR for maximum coverage"""
-    complete_text = ""
-    
-    # First try pdfplumber for text extraction - get ALL text from ALL pages
-    try:
-        with pdfplumber.open(pdf_path) as pdf:
-            print(f"  Extracting text from {len(pdf.pages)} pages using pdfplumber...")
-            for page_num, page in enumerate(pdf.pages, 1):
-                text = page.extract_text()
-                if text:
-                    complete_text += f"\n--- Page {page_num} ---\n"
-                    complete_text += text + "\n"
-                    print(f"    Page {page_num}: {len(text)} characters extracted")
-    except Exception as e:
-        print(f"Error extracting text with pdfplumber: {e}")
-    
-    # Always use OCR to get complete PDF text, regardless of pdfplumber result
-    try:
-        print(f"  Extracting text using OCR...")
-        ocr_text = extract_text_from_pdf_ocr(pdf_path)
-        # Combine both results for maximum coverage
-        complete_text += "\n" + ocr_text
-    except Exception as e:
-        print(f"Error extracting text with OCR: {e}")
-        complete_text += f"\n[OCR Error: {e}]"
-    
-    # Ensure we always return some text
-    if not complete_text.strip():
-        complete_text = f"[No text extracted from {os.path.basename(pdf_path)}]"
-    
-    print(f"  Total extracted text length: {len(complete_text)} characters")
-    return complete_text.strip()
-
-def get_value(lines, key):
-    for line in lines:
-        if key.lower() in line.lower():
-            parts = line.split(":")
-            if len(parts) > 1:
-                value = parts[1].strip()
-                if " | " in value:
-                    value = value.split(" | ")[0].strip()
-                return value
-    return None
-
-def get_total_order_value(lines, key):
-    for line in lines:
-        if key.lower() in line.lower():
-            idx = line.lower().find(key.lower())
-            # Take substring after the key itself, without expecting ':'
-            value = line[idx + len(key):].strip()
-            if value:
-                value = re.split(r'[\(\|]', value)[0].strip()
-                return value
-    return None
-
-def extract_product_details_ocr(pdf_path):
-    text = extract_text_from_pdf_ocr(pdf_path)
-    lines = text.splitlines()
-    
-    # Find all product entries by looking for "Product Name" pattern
-    products = []
-    current_product = {}
-    product_fields = [
-        "Product Name",
-        "Brand",
-        "Brand Type",
-        "Catalogue Status",
-        "Selling As",
-        "Category Name & Quadrant",
-        "Model",
-        "HSN Code",
-    ]
-    
-    for line in lines:
-        # Check if this line starts a new product
-        if "Product Name" in line:
-            # If we have a current product, save it before starting a new one
-            if current_product:
-                products.append(current_product)
-            current_product = {}
-            # Extract product name
-            value = get_value([line], "Product Name")
-            current_product["Product Name"] = value if value else "NOT FOUND"
-        else:
-            # Check for other product fields
-            for field in product_fields[1:]:  # Skip "Product Name" as we already handled it
-                if field in line:
-                    value = get_value([line], field)
-                    current_product[field] = value if value else "NOT FOUND"
-    
-    # Add the last product
-    if current_product:
-        products.append(current_product)
-    
-    # Handle Total Order Value separately
-    total_order_val = get_total_order_value(lines, "Total Order Value (in INR)")
-    total_order_val = total_order_val if total_order_val else "NOT FOUND"
-    
-    return products, total_order_val
-
-
-# ============================================
 # ROUTE: MAIN FILE UPLOAD PAGE (INDEX)
 # ============================================
 
@@ -1547,59 +1276,13 @@ def index():
             filename = f"{uuid.uuid4().hex}_{secure_filename(file.filename)}"
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
-            # Save extracted text copy immediately to pdf_texts/ before any further processing
-            try:
-                text_dir = 'pdf_texts'
-                os.makedirs(text_dir, exist_ok=True)
-                extracted = _extract_complete_text_for_app(file_path)
-                txt_name = os.path.splitext(filename)[0] + '.txt'
-                txt_path = os.path.join(text_dir, txt_name)
-                with open(txt_path, 'w', encoding='utf-8') as tf:
-                    tf.write(extracted)
-                print(f"✅ Extracted text saved: {txt_path}")
-
-                # Upsert extracted full text into contracts.text_format so the DB has the same content
-                try:
-                    conn = mysql.connector.connect(**db_config)
-                    cur = conn.cursor()
-                    # Try to find existing contract by filename
-                    cur.execute("SELECT contract_id FROM contracts WHERE filename = %s LIMIT 1", (filename,))
-                    res = cur.fetchone()
-                    if res and res[0]:
-                        # Update existing contract's text_format and upload_time
-                        cur.execute("UPDATE contracts SET text_format = %s, upload_time = %s WHERE contract_id = %s",
-                                    (extracted, datetime.now(), res[0]))
-                        print(f"Updated contracts.text_format for existing contract_id={res[0]} filename={filename}")
-                    else:
-                        # No existing contract for this filename — insert a minimal contract row
-                        new_cid = str(uuid.uuid4())
-                        cur.execute("INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format) VALUES (%s, %s, %s, %s, %s)",
-                                    (new_cid, filename, datetime.now(), None, extracted))
-                        print(f"Inserted new contract {new_cid} for uploaded file {filename} with text_format populated")
-                    conn.commit()
-                except Exception as e:
-                    print(f"DB upsert error for extracted text (file={filename}): {e}")
-                finally:
-                    try:
-                        if cur:
-                            cur.close()
-                    except Exception:
-                        pass
-                    try:
-                        if conn and conn.is_connected():
-                            conn.close()
-                    except Exception:
-                        pass
-
-            except Exception as e:
-                print(f"⚠️ Failed to save extracted text for {file_path}: {e}")
             uploaded_files.append(file_path)
             print("✅ Saved:", file_path)
 
-        # Trigger background cleanup process
+        # Trigger background cleanup process (delete.py will handle extraction and DB save)
         if uploaded_files:
             subprocess.Popen(["python3", "delete.py", app.config['UPLOAD_FOLDER']])
-            
+
             # Render result template with success message
             return render_template(
                 'result.html',
