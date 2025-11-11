@@ -1,3 +1,6 @@
+# ============================================
+# IMPORTS - All required libraries and modules
+# ============================================
 import os
 import re
 import pdfplumber
@@ -9,14 +12,25 @@ import uuid
 from datetime import datetime
 import shutil
 
-# -------------------- Linux Server Config --------------------
+
+# ============================================
+# LINUX SERVER CONFIGURATION
+# ============================================
+# Tesseract OCR path for Linux server
 pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
+# Poppler path for PDF to image conversion
 POPPLER_PATH = r"/usr/bin"
 
+# Import database configuration from external file
 from db_config import db_config
 
 
+# ============================================
+# UTILITY FUNCTION: EVENT LOGGING
+# ============================================
+
 def log_event(message):
+   
     try:
         log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logfile.txt")
         with open(log_path, "a", encoding="utf-8") as logf:
@@ -25,8 +39,25 @@ def log_event(message):
         pass
 
 
-#-----------------Extract Date-----------------#
+# ============================================
+# DATA EXTRACTION FUNCTION: EXTRACT DATE
+# ============================================
+
 def extract_first_date(text_format):
+    """
+    Extract the first date from OCR text.
+    
+    Handles multiple date patterns including:
+    - OCR-noisy patterns like "DDaattee ::" 
+    - Standard formats: DD/MM/YYYY, DD-MM-YYYY
+    - ISO format: YYYY-MM-DD
+    
+    Args:
+        text_format: Extracted text from PDF (string)
+        
+    Returns:
+        Extracted date string or None if not found
+    """
     # Look for OCR-noisy label like "Date ::" (sometimes appears as 'DDaattee') followed by a token
     pattern = r"DDaattee\s*::\s*([0-9]{1,4}[-/ ]?[A-Za-z0-9]{1,3}[-/ ]?[0-9]{2,4})"
     match = re.search(pattern, text_format)
@@ -43,16 +74,43 @@ def extract_first_date(text_format):
     return None
 
 
-# ----------------------------
-# Helpers to clean text
-# ----------------------------
+# ============================================
+# TEXT CLEANING FUNCTIONS
+# ============================================
+
 def clean_hindi(text):
+    """
+    Remove Hindi/Devanagari characters from text.
+    
+    Used to clean extracted text that contains mixed English and Hindi.
+    Removes Unicode range U+0900 to U+097F (Devanagari script).
+    
+    Args:
+        text: String containing mixed text
+        
+    Returns:
+        Cleaned string with only English characters
+    """
     if not text:
         return ""
     return re.sub(r'[\u0900-\u097F]+', '', str(text)).strip()
 
 
 def clean_address(text):
+    """
+    Clean and extract address from OCR text.
+    
+    Removes:
+    - CID markers (cid:...)
+    - Hindi characters
+    - Extracts only text after "Address :" marker
+    
+    Args:
+        text: Raw address string from PDF
+        
+    Returns:
+        Cleaned address string
+    """
     if not text:
         return ""
     text = str(text)
@@ -68,12 +126,23 @@ def clean_address(text):
 
 
 def truncate_on_punc(s: str) -> str:
-    """Truncate the string at the first occurrence of noisy punctuation.
-    Truncate the string at the first occurrence of any non-alphanumeric (keyboard) symbol.
-    This will keep only letters, numbers and spaces. As requested, any other symbol
-    (comma, @, #, -, /, \\, |, braces, etc.) will mark the truncation point so
-    everything after it is hidden.
-    Returns trimmed substring before the first symbol.
+    """
+    Truncate string at first non-alphanumeric symbol.
+    
+    Keeps only letters, numbers, and spaces.
+    Truncates at first occurrence of any symbol (comma, @, #, -, /, \, |, braces, etc.).
+    
+    Purpose: Clean OCR noise where symbols indicate garbled text starts.
+    
+    Args:
+        s: Input string to clean
+        
+    Returns:
+        Substring before first symbol, or original string if no symbols found
+        
+    Example:
+        "John Doe @ Company" -> "John Doe"
+        "Product#123" -> "Product"
     """
     if not s:
         return ''
@@ -87,7 +156,40 @@ def truncate_on_punc(s: str) -> str:
     return parts[0].strip()
 
 
+# ============================================
+# DATABASE FUNCTION: SAVE EXTRACTED DATA
+# ============================================
+
 def save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, text_format):
+    """
+    Save extracted contract data to MySQL database.
+    
+    Inserts/updates data into multiple tables:
+    - contracts: Main contract information with text_format
+    - organisations: Organisation details (type, ministry, department, name, zone)
+    - buyers: Buyer contact and address information
+    - sellers: Seller/vendor details (GeM ID, company, MSME, GSTIN)
+    - products: Product line items with details
+    
+    Features:
+    - Transaction support (commit/rollback)
+    - Duplicate handling (ON DUPLICATE KEY UPDATE)
+    - Text truncation for long fields
+    - Error logging
+    
+    Args:
+        contract_id: Unique contract UUID
+        filename: Original PDF filename
+        organisation_data: Dict with org details
+        buyer_data: Dict with buyer details
+        seller_data: Dict with seller details
+        products_list: List of product dictionaries
+        total_order_value: Total contract value
+        text_format: Full extracted text from PDF
+        
+    Returns:
+        True on success, False on error
+    """
     conn = None
     cursor = None
     try:
@@ -206,8 +308,23 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
             conn.close()
 
 
-# -------------------- TEXT EXTRACTION --------------------
+# ============================================
+# PDF TEXT EXTRACTION FUNCTIONS
+# ============================================
+
 def extract_text_from_pdf_ocr(pdf_path):
+    """
+    Extract text from PDF using OCR (Optical Character Recognition).
+    
+    Uses pdf2image + pytesseract for scanned PDFs or PDFs where text extraction fails.
+    Supports English and Hindi languages.
+    
+    Args:
+        pdf_path: Path to PDF file
+        
+    Returns:
+        Extracted text string from all pages
+    """
     images = convert_from_path(pdf_path, dpi=300, poppler_path=POPPLER_PATH)
     full_text = ""
     for img in images:
@@ -216,6 +333,20 @@ def extract_text_from_pdf_ocr(pdf_path):
 
 
 def extract_complete_text(pdf_path):
+    """
+    Extract complete text from PDF using multiple methods.
+    
+    Process:
+    1. First tries pdfplumber for native text extraction
+    2. Then uses OCR as fallback/supplement
+    3. Combines both results for maximum text coverage
+    
+    Args:
+        pdf_path: Path to PDF file
+        
+    Returns:
+        Complete extracted text or error message if both methods fail
+    """
     text = ""
     try:
         with pdfplumber.open(pdf_path) as pdf:
@@ -232,8 +363,45 @@ def extract_complete_text(pdf_path):
     return text
 
 
+# ============================================
+# DATA EXTRACTION HELPER FUNCTIONS  
+# ============================================
+
 def extract_contact_number(text):
+    """
+    Extract 10-digit Indian phone numbers from text.
+    
+    Handles formats:
+    - +91-XXXXXXXXXX
+    - +91 XXXXXXXXXX
+    - XXXXXXXXXX (10 digits)
+    
+    Args:
+        text: Input text string
+        
+    Returns:
+        List of matched phone numbers
+    """
     pattern = re.compile(r'(?:\+91[-\s]?)?(\d{10})')
+    matches = pattern.findall(text)
+    return matches
+
+
+def extract_field(text, field_name):
+    """
+    Extract field value from text using field name as marker.
+    
+    Searches for pattern: "FieldName : Value"
+    Extracts value until next field or end of line.
+    
+    Args:
+        text: Text to search in
+        field_name: Name of field to extract (e.g., "Ministry", "Department")
+        
+    Returns:
+        Cleaned field value or None if not found
+    """
+    pattern = re.compile(rf"{re.escape(field_name)}\s*[:\-]\s*(.+?)(?=\n\S|$)", re.IGNORECASE)
     matches = pattern.findall(text)
     return matches
 
@@ -248,6 +416,19 @@ def extract_field(text, field_name):
 
 
 def extract_buyer_address(text):
+    """
+    Extract buyer address from text.
+    
+    Searches for "Address :" or "पता :" marker.
+    Collects address from current line and next 1-2 lines.
+    Stops at next field marker or CID tags.
+    
+    Args:
+        text: Input text string
+        
+    Returns:
+        Cleaned buyer address string
+    """
     pattern = re.compile(r'(Address\s*:?|पता\s*:?)(.*)', re.IGNORECASE)
     lines = text.split('\n')
     for i, line in enumerate(lines):
@@ -266,6 +447,18 @@ def extract_buyer_address(text):
 
 
 def extract_seller_address_after_marker(text):
+    """
+    Extract seller address from text after "SSeelllleerr DDeettaaiillss" marker.
+    
+    OCR sometimes reads "Seller Details" as "SSeelllleerr DDeettaaiillss".
+    Extracts address lines after this marker until CID tag or next field.
+    
+    Args:
+        text: Full extracted text from PDF
+        
+    Returns:
+        Cleaned seller address string
+    """
     split_sections = text.split("SSeelllleerr DDeettaaiillss", 1)
     seller_address = ""
     if len(split_sections) == 2:
@@ -296,6 +489,28 @@ def extract_seller_address_after_marker(text):
 
 
 def extract_products(text):
+    """
+    Extract product details from contract text.
+    
+    Searches for product information patterns and extracts:
+    - Product Name
+    - Brand
+    - Brand Type
+    - Catalogue Status
+    - Selling As
+    - Category Name & Quadrant
+    - Model
+    - HSN Code
+    
+    Uses regex patterns to find product blocks and parse field values.
+    Handles multiple products in single contract.
+    
+    Args:
+        text: Full extracted text from PDF
+        
+    Returns:
+        List of product dictionaries, each containing product details
+    """
     products = []
     product_blocks = re.split(r'Product Name\s*[:\-]', text, flags=re.IGNORECASE)[1:]
     for block in product_blocks:
@@ -473,20 +688,26 @@ import shutil
 pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 POPPLER_PATH = r"/usr/bin"
 
-# # -------------------- Database Config --------------------
-# db_config = {
-#     'host': 'localhost',
-#     'user': 'gem',
-#     'password': 'Y!!0n1z3#',
-#     'database': 'gem'
-# }
-
-
 from db_config import db_config
 
 
-# -------------------- Logging --------------------
+# ============================================
+# ALTERNATE VERSION: UTILITY FUNCTION - EVENT LOGGING
+# ============================================
+
 def log_event(message: str):
+    """
+    Write timestamped event to logfile.txt (alternate version).
+    
+    Identical functionality to first log_event() but with explicit type hints.
+    Creates/appends to logfile.txt in script directory.
+    
+    Args:
+        message (str): Event description to log
+        
+    Returns:
+        None
+    """
     try:
         log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logfile.txt")
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -495,8 +716,39 @@ def log_event(message: str):
     except Exception:
         pass
 
-# -------------------- DATABASE FUNCTION --------------------
+
+# ============================================
+# ALTERNATE VERSION: SAVE TO DATABASE FUNCTION
+# ============================================
+
 def save_to_database(contract_id, filename, organisation_data, buyer_data, seller_data, products_list, total_order_value, text_format, contract_date):
+    """
+    Save extracted contract data to database (alternate version with contract_date parameter).
+    
+    Extended version that accepts contract_date as parameter instead of extracting it.
+    Inserts contract info and related records into 5 MySQL tables.
+    
+    Args:
+        contract_id: Unique contract identifier
+        filename: PDF filename
+        organisation_data: Dict with organisation fields
+        buyer_data: Dict with buyer fields
+        seller_data: Dict with seller fields
+        products_list: List of product dicts
+        total_order_value: Total contract value
+        text_format: Source of text extraction ('pdfplumber' or 'ocr')
+        contract_date: Pre-extracted contract date (datetime object or string)
+        
+    Returns:
+        None
+        
+    Tables affected:
+        - contracts: Contract header info
+        - organisations: Organisation details
+        - buyers: Buyer information
+        - sellers: Seller information
+        - products: Individual product records
+    """
     conn = None
     cursor = None
     try:
@@ -581,8 +833,24 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
                 cursor.close()
             conn.close()
 
-# -------------------- TEXT EXTRACTION --------------------
+
+# ============================================
+# ALTERNATE VERSION: TEXT EXTRACTION FUNCTIONS
+# ============================================
+
 def extract_text_from_pdf_ocr(pdf_path):
+    """
+    Extract text using OCR on entire PDF (fallback version).
+    
+    Converts all PDF pages to images and runs Tesseract OCR.
+    Less efficient than page-by-page approach but simpler.
+    
+    Args:
+        pdf_path: Absolute path to PDF file
+        
+    Returns:
+        Concatenated text from all pages
+    """
     # fallback: run OCR on all pages (not normally used; prefer per-page OCR)
     images = convert_from_path(pdf_path, dpi=200, poppler_path=POPPLER_PATH)
     full_text = ""
@@ -590,7 +858,20 @@ def extract_text_from_pdf_ocr(pdf_path):
         full_text += pytesseract.image_to_string(img, lang='eng+hin') + "\n"
     return full_text
 
+
 def extract_complete_text(pdf_path):
+    """
+    Extract text using hybrid approach: pdfplumber + selective OCR (alternate version).
+    
+    Optimized version that only runs OCR on pages where pdfplumber fails.
+    Avoids unnecessary OCR processing for text-based PDFs.
+    
+    Args:
+        pdf_path: Absolute path to PDF file
+        
+    Returns:
+        Complete text extracted from all pages
+    """
     """Combine pdfplumber and selective per-page OCR for maximum text extraction.
     Only run OCR on pages where pdfplumber returns no text to avoid unnecessary
     heavy image conversions.
@@ -631,9 +912,24 @@ def extract_complete_text(pdf_path):
         full_text = f"[No text extracted from {os.path.basename(pdf_path)}]"
     return full_text
 
-# -------------------- REGEX EXTRACTION --------------------
+
+# ============================================
+# ALTERNATE VERSION: DATA EXTRACTION HELPERS
+# ============================================
 
 def extract_contact_number(text):
+    """
+    Extract Indian phone number from text (alternate version).
+    
+    Searches for 10-digit phone numbers with optional +91 prefix.
+    Returns first match found.
+    
+    Args:
+        text: Text to search for phone number
+        
+    Returns:
+        10-digit phone number string if found, empty string otherwise
+    """
     # Extract all 10-digit numbers, optionally with +91 prefix, spaces, or dashes
     pattern = re.compile(r'(?:\+91[-\s]?)?(\d{10})')
     matches = pattern.findall(text)
@@ -641,6 +937,19 @@ def extract_contact_number(text):
 
 
 def extract_field(text, field_name):
+    """
+    Extract field value by field name (alternate version).
+    
+    Uses same logic as primary version with regex + fallback.
+    Removes Hindi text after extracting value.
+    
+    Args:
+        text: Full text to search
+        field_name: Field label to search for (e.g., "Email ID", "GSTIN")
+        
+    Returns:
+        Cleaned field value string, or None if not found
+    """
     # Primary regex search for 'FieldName: value' style
     pattern = re.compile(rf"{re.escape(field_name)}\s*[:\-]\s*(.+?)(?=\n\S|$)", re.IGNORECASE)
     match = pattern.search(text)
@@ -680,6 +989,21 @@ def extract_field(text, field_name):
 
 
 def clean_text(s: str) -> str:
+    """
+    Clean and normalize text extracted from PDFs.
+    
+    Removes OCR artifacts and normalizes formatting:
+    - Removes (cid:NN) character tokens
+    - Collapses repeated characters (PPrroodduucctt → Product)
+    - Cleans excessive punctuation and special characters
+    - Normalizes whitespace
+    
+    Args:
+        s: Text string to clean
+        
+    Returns:
+        Cleaned and normalized text string
+    """
     if not s:
         return ''
     # remove (cid:NN) tokens
@@ -695,6 +1019,23 @@ def clean_text(s: str) -> str:
 
 
 def extract_date_from_text(text: str):
+    """
+    Extract date from contract text using multiple strategies.
+    
+    Multi-strategy date extraction:
+    1. Regex patterns: DD-MMM-YYYY, DD/MM/YYYY, YYYY-MM-DD, Month DD, YYYY
+    2. dateutil fuzzy parsing (if available)
+    3. Standard datetime.strptime with multiple formats
+    4. Last resort: Search for "Generated Date" markers
+    
+    Prefers day-first format for ambiguous dates.
+    
+    Args:
+        text: Full contract text to search
+        
+    Returns:
+        datetime object if date found, None otherwise
+    """
     """Try multiple strategies to extract a date from text and return a datetime or None."""
     # quick regex candidates
     candidates = []
@@ -757,8 +1098,23 @@ def extract_date_from_text(text: str):
     return None
 
 
-# -------------------- DB helpers --------------------
+# ============================================
+# DATABASE HELPER FUNCTIONS
+# ============================================
+
 def get_contract_id_by_filename(filename):
+    """
+    Retrieve contract_id from database using filename.
+    
+    Searches contracts table for matching filename.
+    Returns most recent contract if multiple matches exist.
+    
+    Args:
+        filename: PDF filename to search for
+        
+    Returns:
+        contract_id (string) if found, None otherwise
+    """
     try:
         conn = mysql.connector.connect(**db_config)
         cur = conn.cursor()
@@ -772,6 +1128,27 @@ def get_contract_id_by_filename(filename):
 
 
 def insert_products_for_contract(contract_id, products_list):
+    """
+    Bulk insert products into database for a contract.
+    
+    Inserts multiple product records associated with a contract.
+    Handles database connection and error logging.
+    
+    Args:
+        contract_id: Contract ID to associate products with
+        products_list: List of product dictionaries with keys:
+                      - product_name
+                      - brand
+                      - hsn_code
+                      - quantity
+                      - rate
+                      - per
+                      - gst_rate
+                      - amount
+                      
+    Returns:
+        None
+    """
     if not products_list:
         return 0
     try:
@@ -805,7 +1182,36 @@ def insert_products_for_contract(contract_id, products_list):
         log_event(f"insert_products_for_contract error: {e}")
         return 0
 
+
+# ============================================
+# ALTERNATE VERSION: PRODUCT EXTRACTION
+# ============================================
+
 def extract_products(text):
+    """
+    Extract product details from contract text (alternate version).
+    
+    More sophisticated extraction with multiple fallback strategies:
+    1. Search for 'Product Description/Specification' sections
+    2. Search for 'Model' keywords and extract nearby text
+    3. Search for 'HSN' keywords as last resort
+    
+    Extracts fewer fields than primary version (only 7 fields vs 8).
+    
+    Args:
+        text: Full contract text
+        
+    Returns:
+        List of product dicts with keys:
+        - Product Name
+        - Brand
+        - Brand Type
+        - Catalogue Status
+        - Selling As
+        - Category Name & Quadrant
+        - Model
+        - HSN Code
+    """
     products = []
     # Try several heuristics since PDFs differ in how product blocks are labeled.
     # 1) Look for explicit 'Product Description' / 'Product Specification' sections.
@@ -889,7 +1295,20 @@ def extract_products(text):
                         break
     return products
 
+
 def extract_total_order_value(text):
+    """
+    Extract total order value from contract text.
+    
+    Searches for "Total Order Value (in INR)" followed by amount.
+    Cleans extracted value by removing trailing special characters.
+    
+    Args:
+        text: Full contract text
+        
+    Returns:
+        Cleaned total order value string, or "NOT FOUND" if not present
+    """
     pattern = re.compile(r"Total Order Value\s*\(in INR\)\s*[:\-]?\s*(.+)", re.IGNORECASE)
     match = pattern.search(text)
     if match:
@@ -898,8 +1317,40 @@ def extract_total_order_value(text):
         return value
     return "NOT FOUND"
 
-# -------------------- PROCESS PDFs --------------------
+
+# ============================================
+# MAIN PROCESSING FUNCTION
+# ============================================
+
 def process_unprocessed_pdfs():
+    """
+    Main function to process all PDFs from unprocessed_pdfs folder.
+    
+    Complete workflow:
+    1. Scans unprocessed_pdfs folder for PDF files
+    2. For each PDF:
+       - Extracts complete text (pdfplumber + OCR)
+       - Parses organisation, buyer, seller data
+       - Extracts products list
+       - Extracts date and total order value
+       - Saves all data to database
+       - Moves processed file to uploaded_pdfs folder
+    3. Reports success/failure statistics
+    
+    Features:
+    - Batch processing with progress tracking
+    - Error handling per file (continues on failure)
+    - Automatic file organization (moves processed files)
+    - Event logging for debugging
+    - Summary report at end
+    
+    Folders:
+        unprocessed_pdfs/: Input folder (PDFs to process)
+        uploaded_pdfs/: Output folder (successfully processed PDFs)
+        
+    Returns:
+        None (prints progress and summary to console)
+    """
     unprocessed_folder = "unprocessed_pdfs"
     uploaded_folder = "uploaded_pdfs"
     os.makedirs(unprocessed_folder, exist_ok=True)
@@ -1036,8 +1487,26 @@ def process_unprocessed_pdfs():
     print(f"✅ Successfully processed: {len(processed_files)}")
     print(f"❌ Failed: {len(failed_files)}")
 
-# -------------------- MAIN --------------------
+
+# ============================================
+# SCRIPT ENTRY POINT
+# ============================================
+
 if __name__ == "__main__":
+    """
+    Main script execution.
+    
+    Runs PDF processing workflow when script is executed directly.
+    Called automatically by app.py after file upload via subprocess.
+    
+    Process:
+    1. Prints start message
+    2. Calls process_unprocessed_pdfs() to process all PDFs
+    3. Prints completion message
+    
+    Usage:
+        python3 delete.py [upload_folder]
+    """
     print("🔄 Starting PDF processing...")
     process_unprocessed_pdfs()
     print("✅ Processing complete!")
