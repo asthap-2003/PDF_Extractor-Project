@@ -452,6 +452,70 @@ def extract_field(text, field_name):
     return None
 
 
+def extract_field_second_occurrence(text, field_name):
+    """
+    Extract field value from SECOND occurrence in text.
+    
+    Used for seller fields where first occurrence is buyer data.
+    Skips first match and returns second match.
+    
+    Args:
+        text: Text to search in
+        field_name: Name of field to extract (e.g., "Contact No.", "Email ID")
+        
+    Returns:
+        Cleaned field value from second occurrence or None if not found
+    """
+    pattern = re.compile(rf"{re.escape(field_name)}\s*[:\-]\s*(.+?)(?=\n\S|$)", re.IGNORECASE)
+    matches = pattern.finditer(text)
+    
+    # Convert to list to access by index
+    match_list = list(matches)
+    
+    # If we have at least 2 matches, return the second one
+    if len(match_list) >= 2:
+        value = match_list[1].group(1).strip()
+        # Apply comprehensive cleaning
+        value = clean_field_data(value)
+        value = clean_hindi(value)
+        return value if value else None
+    
+    return None
+
+
+def extract_field_third_occurrence(text, field_name):
+    """
+    Extract field value from THIRD occurrence in text.
+    
+    Used for seller email where:
+    - First occurrence = Buyer email
+    - Second occurrence = Other data (skip)
+    - Third occurrence = Seller email
+    
+    Args:
+        text: Text to search in
+        field_name: Name of field to extract (e.g., "Email ID")
+        
+    Returns:
+        Cleaned field value from third occurrence or None if not found
+    """
+    pattern = re.compile(rf"{re.escape(field_name)}\s*[:\-]\s*(.+?)(?=\n\S|$)", re.IGNORECASE)
+    matches = pattern.finditer(text)
+    
+    # Convert to list to access by index
+    match_list = list(matches)
+    
+    # If we have at least 3 matches, return the third one
+    if len(match_list) >= 3:
+        value = match_list[2].group(1).strip()  # Index 2 = third match
+        # Apply comprehensive cleaning
+        value = clean_field_data(value)
+        value = clean_hindi(value)
+        return value if value else None
+    
+    return None
+
+
 def extract_buyer_address(text):
     """
     Extract buyer address from text.
@@ -670,6 +734,8 @@ def process_unprocessed_pdfs():
                 m_token = re.search(r'Contact No\.?', first_line, re.IGNORECASE)
                 after = first_line[m_token.end():] if m_token else first_line
                 after_str = after.strip()
+                # Clean CID and pipe symbols
+                after_str = clean_field_data(after_str)
                 # If after_str contains any digit, accept the full substring as the contact (user wants full string)
                 if re.search(r'\d', after_str):
                     buyer_contact = after_str
@@ -679,7 +745,7 @@ def process_unprocessed_pdfs():
                     if m2:
                         buyer_contact = m2.group(1)
                     else:
-                        buyer_contact = clean_hindi(after_str)
+                        buyer_contact = clean_field_data(clean_hindi(after_str))
 
             # Seller: prefer the second 'Contact No.' line and capture the full right-side substring on that line.
             seller_contact = ""
@@ -688,6 +754,8 @@ def process_unprocessed_pdfs():
                 m_token2 = re.search(r'Contact No\.?', second_line, re.IGNORECASE)
                 after2 = second_line[m_token2.end():] if m_token2 else second_line
                 after2_str = after2.strip()
+                # Clean CID and pipe symbols
+                after2_str = clean_field_data(after2_str)
                 if re.search(r'\d', after2_str):
                     seller_contact = after2_str
                 else:
@@ -695,11 +763,16 @@ def process_unprocessed_pdfs():
                     if m3:
                         seller_contact = m3.group(1)
             else:
-                # Fallback: if only one 'Contact No.' line, search whole text for a second occurrence
-                contact_regex = re.compile(r'Contact No\\.?\\s*[:\\-]?\\s*(\\d{10})', re.IGNORECASE)
-                contact_numbers = contact_regex.findall(combined_text)
-                if len(contact_numbers) > 1:
-                    seller_contact = clean_hindi(contact_numbers[1])
+                # Fallback: use second occurrence function
+                seller_contact_fallback = extract_field_second_occurrence(combined_text, "Contact No.")
+                if seller_contact_fallback:
+                    seller_contact = seller_contact_fallback
+                else:
+                    # Last fallback: if only one 'Contact No.' line, search whole text for a second occurrence
+                    contact_regex = re.compile(r'Contact No\\.?\\s*[:\\-]?\\s*(\\d{10})', re.IGNORECASE)
+                    contact_numbers = contact_regex.findall(combined_text)
+                    if len(contact_numbers) > 1:
+                        seller_contact = clean_field_data(clean_hindi(contact_numbers[1]))
             buyer_address = extract_buyer_address(combined_text)
             seller_address = extract_seller_address_after_marker(combined_text)
 
@@ -710,11 +783,21 @@ def process_unprocessed_pdfs():
                 "GSTIN": extract_field(combined_text, "GSTIN"),
                 "Address": buyer_address,
             }
+            
+            # Extract seller email from THIRD occurrence (1st=Buyer, 2nd=Other, 3rd=Seller)
+            seller_email = extract_field_third_occurrence(combined_text, "Email ID")
+            if not seller_email:
+                # Fallback to second occurrence
+                seller_email = extract_field_second_occurrence(combined_text, "Email ID")
+            if not seller_email:
+                # Last fallback to regular extraction
+                seller_email = extract_field(combined_text, "Email ID")
+            
             seller_data = {
                 "GeM Seller ID": extract_field(combined_text, "GeM Seller ID"),
                 "Company Name": extract_field(combined_text, "Company Name"),
                 "Contact No.": seller_contact,
-                "Email ID": extract_field(combined_text, "Email ID"),
+                "Email ID": seller_email,
                 "Address": seller_address,
                 "MSME Registration number": extract_field(combined_text, "MSME Registration number"),
                 "GSTIN": extract_field(combined_text, "GSTIN"),
