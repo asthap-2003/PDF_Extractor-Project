@@ -15,6 +15,13 @@ This system automatically extracts structured data from GEM contract PDFs includ
 
 The extracted data is stored in a MySQL database and presented through an intuitive web interface.
 
+### ✨ Latest Features (November 2025)
+- 🔔 **Real-Time Auto-Refresh:** Notification bell shows new contracts every 10 seconds
+- 📋 **Failed Files Logging:** Full-screen modal to view and clear processing errors
+- ♻️ **Data Cleaning:** Automatic removal of OCR artifacts (cid: patterns, pipe symbols)
+- 🎯 **Smart Extraction:** Multiple occurrence-based field extraction for seller data
+- 📊 **Seamless Updates:** New data appears without page reload
+
 ---
 
 ## 📁 Project Structure
@@ -71,6 +78,10 @@ PDF_Extractor-Project/
 - `/contracts` - View all contracts
 - `/products/<contract_id>` - View products for a contract
 - `/api/products/<contract_id>` - API endpoint for products
+- `/api/contracts/count` - Get total contract count (for auto-refresh)
+- `/api/contracts/new` - Get newest contracts (for auto-refresh)
+- `/api/logs` - Get failed file logs
+- `/api/logs/clear` - Clear all logs
 - `/search` - Search contracts
 - `/download_pdf/<contract_id>` - Generate PDF report
 
@@ -385,6 +396,65 @@ Shows products for that contract
 
 ## 🎨 Frontend Features
 
+### **Real-Time Features:**
+
+#### **1. Auto-Refresh Notification System**
+**Location:** Contracts page header (right side)
+
+**Features:**
+- 🔔 **Notification Bell Icon:** White transparent circle with glassmorphism effect
+- 🟢 **Live Count Badge:** Green badge showing number of new contracts
+- ⚡ **Auto-Refresh:** Checks for new contracts every 10 seconds
+- 🔄 **Seamless Updates:** New contracts appear without page reload
+- ✨ **Pulse Animation:** Badge pulses when new records detected
+- 👆 **Click to Clear:** Badge count resets when bell is clicked
+
+**Technical Implementation:**
+- API Endpoint: `/api/contracts/count` - Returns total contract count
+- API Endpoint: `/api/contracts/new?skip=X&limit=Y` - Returns newest contracts
+- JavaScript: `checkForNewRecords()` runs every 10 seconds via setInterval
+- Data Update: New contracts prepended to existing array without full page reload
+
+**User Experience:**
+- Upload PDF → Within 10 seconds, notification badge appears with count
+- Click bell → Badge disappears, new contracts highlighted in table
+- No interruption to user's current work (filters, sorting remain intact)
+
+---
+
+#### **2. Failed Files Logging System**
+**Location:** Red "Logs" button next to Export Excel
+
+**Features:**
+- 🔴 **Logs Button:** Red button in action bar for high visibility
+- 📋 **Full-Screen Modal:** 100% width/height overlay with dark blue header
+- 📄 **Failed Files Only:** Shows only PDFs that failed to process
+- 🔍 **Detailed Info:** Displays filename, timestamp, and error message
+- 🔄 **Refresh Button:** Reload logs on demand (green button)
+- 🗑️ **Clear Logs:** Delete all log entries with confirmation (red button)
+- ❌ **Easy Close:** Click X button in header or outside modal to close
+
+**Log Format:**
+```
+[2025-11-11 18:36:00] ❌ failed-file.pdf - Error message
+[2025-11-11 19:20:15] ❌ corrupted-document.pdf
+```
+
+**Technical Implementation:**
+- API Endpoint: `/api/logs` - Reads `logfile.txt` and filters failed entries
+- API Endpoint: `/api/logs/clear` (POST) - Clears entire log file
+- Log Filtering: Searches for "Failed to save" and "Error processing" patterns
+- JavaScript: `openLogsModal()` and `loadLogs()` functions
+- Confirmation: Requires user confirmation before clearing logs
+
+**User Experience:**
+- Click "Logs" → Full-screen modal opens instantly
+- Empty state message: "No failed files found. All PDFs processed successfully! ✅"
+- Click "Clear Logs" → Confirms deletion → Logs cleared → Success message shown
+- Auto-refresh after clear to show empty state
+
+---
+
 ### **Templates:**
 
 1. **index.html** - Upload Interface
@@ -392,7 +462,10 @@ Shows products for that contract
    - File validation
    - Upload progress
 
-2. **contracts.html** - Main Dashboard
+2. **contracts_list.html** - Main Dashboard (Enhanced)
+   - Real-time notification bell with auto-refresh
+   - Failed files logging modal
+   - Searchable contracts table
    - Searchable contracts table
    - Filter by date, value, organization
    - Export to PDF functionality
@@ -408,11 +481,35 @@ Shows products for that contract
    - Search by organization
    - Search by product name
 
-### **Styling:**
+### **Static Assets:**
+
+**CSS (`static/css/contracts.css`):**
 - Professional blue theme (#1e40af)
+- Notification bell styles with glassmorphism effect
+- Pulse animation for badge (`@keyframes bellPulse`)
+- Full-screen modal styling
 - Responsive design
 - Clean card-based layouts
-- Smooth animations
+- Smooth hover transitions
+
+**JavaScript (`static/js/contracts.js`):**
+- **Auto-Refresh Logic:**
+  - `checkForNewRecords()` - Polls API every 10 seconds
+  - `fetchNewContracts()` - Retrieves new contracts via API
+  - `updateNotificationCount()` - Updates bell badge count
+  - Seamless data array updates without page reload
+
+- **Logs Functionality:**
+  - `openLogsModal()` - Opens full-screen logs modal
+  - `loadLogs()` - Fetches logs from API
+  - `clearLogs()` - Clears log file with confirmation
+  - Modal close handlers (X button and click outside)
+
+- **Table Management:**
+  - Dynamic row rendering
+  - Pagination controls
+  - Filter handling
+  - Export functionality
 
 ---
 
@@ -515,8 +612,21 @@ POPPLER_PATH = r"/usr/bin"
 
 ### **PDF Not Processing:**
 - Check `logfile.txt` for errors
+- Use the **Logs button** in contracts page to see failed files
 - Verify Tesseract installation: `tesseract --version`
-- Check folder permissions
+- Check folder permissions for `unprocessed_pdfs/`
+
+### **Notification Bell Not Updating:**
+- Check browser console for JavaScript errors
+- Verify `/api/contracts/count` endpoint is accessible
+- Ensure auto-refresh interval is running (10 seconds)
+- Clear browser cache and hard refresh (Ctrl + Shift + R)
+
+### **Logs Modal Not Loading:**
+- Check if `logfile.txt` exists in project root
+- Verify `/api/logs` endpoint returns data
+- Check browser network tab for API errors
+- Ensure PM2 is running: `pm2 status`
 
 ### **Database Connection Error:**
 - Verify MySQL service: `sudo systemctl status mysql`
@@ -559,17 +669,26 @@ Internal use only - Government project
 - [ ] Multi-language OCR support
 - [ ] Bulk PDF upload
 - [ ] Advanced analytics dashboard
-- [ ] Email notifications
+- [ ] Email notifications for failed files
 - [ ] API authentication
-- [ ] Excel export functionality
-- [ ] Audit trail logging
+- [x] ✅ Excel export functionality (Completed)
+- [x] ✅ Real-time auto-refresh with notifications (Completed)
+- [x] ✅ Failed files logging system (Completed)
+- [ ] Audit trail logging for all operations
+- [ ] Export logs to CSV/Excel
+- [ ] WebSocket for real-time updates
+- [ ] Dark mode UI theme
 
 ---
 
 ## 📞 Support
 
-For issues or questions, check `logfile.txt` and database logs.
+For issues or questions:
+1. Check `logfile.txt` for processing errors
+2. Use the built-in **Logs button** in contracts page to view failed files
+3. Review database logs for connection issues
+4. Check PM2 logs: `pm2 logs`
 
 ---
 
-**Last Updated:** November 11, 2025
+**Last Updated:** November 12, 2025
