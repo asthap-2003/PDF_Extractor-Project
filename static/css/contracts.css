@@ -365,6 +365,39 @@ th:nth-child(4), td:nth-child(4) { width: 22%; }
 th:nth-child(5), td:nth-child(5) { width: 12%; }
 th:nth-child(6), td:nth-child(6) { width: 11%; }
 
+/* Product-cell specific positioning for meta info (date + contract no) */
+td:nth-child(5) {
+    position: relative; /* allow absolute-positioned meta box inside */
+}
+
+.meta-section {
+     position: absolute;
+    top: 138px;
+    left: 60px;
+    display: grid;
+    gap: 0.75rem;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 4px 11px;
+    border-radius: 4px;
+    box-shadow: 0 6px 20px rgba(30, 64, 175, 0.08);
+    border: 2px solid #03457c;
+    z-index: 5;
+    white-space: nowrap;
+}
+
+.meta-section .data-item {
+    display: inline-flex;
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.meta-section .data-item strong {
+    color: var(--text-primary);
+    margin-right: 0.35rem;
+}
+
 th {
     background: var(--primary-color);
     color: white;

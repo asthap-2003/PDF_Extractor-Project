@@ -170,7 +170,7 @@ function displayFilteredContractsPaginated() {
     if (pageContracts.length === 0) {
         tableBody.innerHTML = `
             <tr>
-                <td colspan="6">
+                    <td colspan="6">
                     <div class="empty-state">
                         <i class="fas fa-search"></i>
                         <h3>No contracts found</h3>
@@ -240,6 +240,10 @@ function displayFilteredContractsPaginated() {
                             <i class="fas fa-rupee-sign"></i> Value
                         </div>
                         <div class="data-item"><strong>Total Value:</strong> ₹${contract.total_order_value || 'N/A'}</div>
+                    </div>
+                    <div class="meta-section" style="margin-top:8px;">
+                        <div class="data-item" ><strong>Date:</strong> ${contract.date || 'N/A'}</div>
+                        <div class="data-item" ><strong>Contract No:</strong> ${contract.contract_no || 'N/A'}</div>
                     </div>
                 </td>
                 <td>

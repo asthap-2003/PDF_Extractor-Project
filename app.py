@@ -681,7 +681,7 @@ def contracts_list():
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor(dictionary=True)
         
-        # Get all contracts first (for pagination)
+        # Get all contracts first (for pagination) and include product/category aggregates in a single query
         cursor.execute("""
             SELECT 
                 c.contract_id,
@@ -690,6 +690,17 @@ def contracts_list():
                 c.total_order_value,
                 c.text_format,
                 c.date,
+                c.contract_no,
+                (
+                    SELECT GROUP_CONCAT(p.product_name SEPARATOR ', ')
+                    FROM products p
+                    WHERE p.contract_id = c.contract_id
+                ) AS product_names,
+                (
+                    SELECT GROUP_CONCAT(p.category_name_quadrant SEPARATOR ', ')
+                    FROM products p
+                    WHERE p.contract_id = c.contract_id
+                ) AS category_names,
                 o.type,
                 o.ministry,
                 o.department,
@@ -715,28 +726,8 @@ def contracts_list():
                OR (s.company_name IS NOT NULL AND s.company_name != '')
             ORDER BY c.upload_time DESC, c.contract_id DESC
         """)
-        
-        all_contracts = cursor.fetchall()
-        
-        # Now get product names separately to avoid GROUP BY issues
-        for contract in all_contracts:
-            # Get concatenated product names
-            cursor.execute("""
-                SELECT GROUP_CONCAT(product_name SEPARATOR ', ') as product_names
-                FROM products 
-                WHERE contract_id = %s
-            """, (contract['contract_id'],))
-            product_result = cursor.fetchone()
-            contract['product_names'] = product_result['product_names'] if product_result else None
 
-            # Get concatenated category_name_quadrant
-            cursor.execute("""
-                SELECT GROUP_CONCAT(category_name_quadrant SEPARATOR ', ') as category_names
-                FROM products 
-                WHERE contract_id = %s
-            """, (contract['contract_id'],))
-            category_result = cursor.fetchone()
-            contract['category_names'] = category_result['category_names'] if category_result else None
+        all_contracts = cursor.fetchall()
 
 
         # Use custom pagination class
