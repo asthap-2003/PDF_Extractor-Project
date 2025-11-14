@@ -142,6 +142,16 @@ def create_tables():
         except Error as e:
             # Column might already exist, which is fine
             print("date column already exists or couldn't be added")
+        # add contract_no column if missing
+        try:
+            cursor.execute("""
+            ALTER TABLE contracts
+            ADD COLUMN contract_no VARCHAR(255) DEFAULT NULL
+            """)
+            print("Added contract_no column to contracts table")
+        except Error as e:
+            # Column might already exist, which is fine
+            print("contract_no column already exists or couldn't be added")
         conn.commit()
         
     except Error as e:

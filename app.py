@@ -1275,11 +1275,21 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
         
-        # Insert into contracts table
+        # Extract contract number from text_format (if present)
+        contract_no_val = None
+        try:
+            if text_format:
+                m = re.search(r"Contract\s*(?:No|Number|No\.)\s*[:\-]?\s*([A-Za-z0-9\-/_.]+)", text_format, re.IGNORECASE)
+                if m:
+                    contract_no_val = m.group(1).strip()
+        except Exception:
+            contract_no_val = None
+
+        # Insert into contracts table (include contract_no)
         cursor.execute("""
-        INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format)
-        VALUES (%s, %s, %s, %s, %s)
-        """, (contract_id, filename, datetime.now(), total_order_value, text_format))
+        INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format, contract_no)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """, (contract_id, filename, datetime.now(), total_order_value, text_format, contract_no_val))
         
         # Insert into organisations table
         cursor.execute("""

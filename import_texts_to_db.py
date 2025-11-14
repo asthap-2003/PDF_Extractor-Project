@@ -82,13 +82,21 @@ def upsert_texts():
         row = cursor.fetchone()
         date_candidate = extract_first_date(content)
         parsed_date = parse_date_to_sql(date_candidate)
+        # Extract contract number if present
+        contract_no_val = None
+        try:
+            mcn = re.search(r"Contract\s*(?:No|Number|No\.)\s*[:\-]?\s*([A-Za-z0-9\-/_.]+)", content, re.IGNORECASE)
+            if mcn:
+                contract_no_val = mcn.group(1).strip()
+        except Exception:
+            contract_no_val = None
 
         if row:
             contract_id, existing_len = row
             # Update text_format (overwrite) and date if parsed
             try:
-                cursor.execute("UPDATE contracts SET text_format=%s, date=%s WHERE contract_id=%s",
-                               (content, parsed_date, contract_id))
+                cursor.execute("UPDATE contracts SET text_format=%s, date=%s, contract_no=%s WHERE contract_id=%s",
+                               (content, parsed_date, contract_no_val, contract_id))
                 conn.commit()
                 updated += 1
                 print(f"Updated contract {contract_id} for {pdf_name} (text len={len(content)})")
@@ -99,8 +107,8 @@ def upsert_texts():
             # Insert new contract row
             new_id = str(uuid.uuid4())
             try:
-                cursor.execute("INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format, date) VALUES (%s,%s,%s,%s,%s,%s)",
-                               (new_id, pdf_name, datetime.now(), '', content, parsed_date))
+                cursor.execute("INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format, date, contract_no) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                               (new_id, pdf_name, datetime.now(), '', content, parsed_date, contract_no_val))
                 conn.commit()
                 inserted += 1
                 print(f"Inserted new contract {new_id} for {pdf_name}")

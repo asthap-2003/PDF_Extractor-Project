@@ -262,12 +262,17 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
                 date_str = None
 
         print(f"Extracted date: {date_str}")
+        # Extract contract number from text
+        try:
+            contract_no_val = extract_contract_no(text_format)
+        except Exception:
+            contract_no_val = None
 
-        # Insert contract row (with date if available)
+        # Insert contract row (with date and contract_no if available)
         cursor.execute("""
-            INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format, date)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (contract_id, filename, datetime.now(), total_order_value, text_format, date_str))
+            INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format, date, contract_no)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (contract_id, filename, datetime.now(), total_order_value, text_format, date_str, contract_no_val))
 
         # organisations
         cursor.execute("""
@@ -513,6 +518,64 @@ def extract_field_third_occurrence(text, field_name):
         value = clean_hindi(value)
         return value if value else None
     
+    return None
+
+
+def extract_contract_no(text):
+    """
+    Extract contract number from the extracted PDF text.
+
+    Looks for common markers like "Contract No", "Contract Number", "Contract No.",
+    and picks the immediate token/line after the marker.
+    Returns cleaned string or None.
+    """
+    if not text:
+        return None
+
+    # First try: look for explicit markers like "Contract No" and capture following
+    try:
+        m = re.search(r"Contract\s*(?:No|Number|No\.)\s*[:\-]?\s*([\s\S]{1,120}?)\n", text, re.IGNORECASE)
+        if m:
+            raw = m.group(1)
+            # remove newlines/spaces inside the token
+            raw = re.sub(r"\s+", "", raw)
+            raw = clean_field_data(raw)
+            raw = clean_hindi(raw)
+            raw = re.sub(r"[\s,:;\.|]+$", "", raw)
+            if raw:
+                return raw
+    except Exception:
+        pass
+
+    # Second try: search for common GEMC pattern anywhere (handles line breaks/spaces)
+    try:
+        # Allow digits to be split across line breaks or spaces (e.g. GEMC-5116\n87755098802)
+        m2 = re.search(r"(GEMC[\s\-\._0-9]{6,80})", text, re.IGNORECASE | re.DOTALL)
+        if m2:
+            val = m2.group(1)
+            # Remove whitespace/newlines/dots/underscores but keep hyphen between GEMC and digits
+            val = re.sub(r"[\s\n\r\._]+", "", val)
+            # Ensure a single hyphen after GEMC if digits follow immediately
+            val = re.sub(r"(GEMC)([-]*)", r"\1-", val, flags=re.IGNORECASE)
+            val = clean_field_data(val)
+            val = clean_hindi(val)
+            val = re.sub(r"[\s,:;\.|]+$", "", val)
+            return val
+    except Exception:
+        pass
+
+    # Last resort: look for any line that starts with 'Contract' and take the rest
+    try:
+        m3 = re.search(r"^Contract\b.*?:?\s*(.+)$", text, re.IGNORECASE | re.MULTILINE)
+        if m3:
+            val = m3.group(1).strip().split('\n')[0]
+            val = re.sub(r"\s+", "", val)
+            val = clean_field_data(val)
+            val = clean_hindi(val)
+            return val if val else None
+    except Exception:
+        pass
+
     return None
 
 
