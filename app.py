@@ -1286,6 +1286,25 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
             contract_no_val = None
 
         # Insert into contracts table (include contract_no)
+        # Prevent duplicate contract_no insertion: if contract_no is present and already exists, skip
+        try:
+            if contract_no_val:
+                cursor.execute("SELECT contract_id FROM contracts WHERE contract_no=%s LIMIT 1", (contract_no_val,))
+                existing = cursor.fetchone()
+                if existing:
+                    msg = f"Duplicate contract_no detected ({contract_no_val}) - skipping insert. existing_contract_id={existing[0]}"
+                    print(msg)
+                    try:
+                        # try to log if available
+                        from delete import log_event
+                        log_event(msg)
+                    except Exception:
+                        pass
+                    return False
+        except Exception:
+            # on checking error, allow insert attempt and let unique index protect
+            pass
+
         cursor.execute("""
         INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format, contract_no)
         VALUES (%s, %s, %s, %s, %s, %s)

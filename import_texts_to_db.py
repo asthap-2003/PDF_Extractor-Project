@@ -5,6 +5,7 @@ import re
 import mysql.connector
 from mysql.connector import Error
 from db_config import db_config
+import shutil
 
 TEXT_DIR = 'pdf_texts'
 
@@ -105,6 +106,26 @@ def upsert_texts():
                 print(f"Failed to update contract for {pdf_name}: {e}")
         else:
             # Insert new contract row
+            # If we have a contract_no extracted, ensure it's not already present in DB
+            if contract_no_val:
+                try:
+                    cursor.execute("SELECT contract_id FROM contracts WHERE contract_no=%s LIMIT 1", (contract_no_val,))
+                    existing = cursor.fetchone()
+                    if existing:
+                                # Move the .txt file to a top-level failed folder so it won't be reprocessed
+                                failed_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'failed_pdf_texts')
+                                os.makedirs(failed_dir, exist_ok=True)
+                                try:
+                                    shutil.move(txt_path, os.path.join(failed_dir, fname))
+                                except Exception:
+                                    # If move fails, ignore but log
+                                    print(f"Could not move {txt_path} to failed folder")
+                        print(f"Skipped {pdf_name}: contract_no {contract_no_val} already exists (contract_id={existing[0]})")
+                        continue
+                except Exception as e:
+                    print(f"Error checking duplicate contract_no for {pdf_name}: {e}")
+                    # proceed to attempt insert (insert may still fail due to unique index)
+
             new_id = str(uuid.uuid4())
             try:
                 cursor.execute("INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format, date, contract_no) VALUES (%s,%s,%s,%s,%s,%s,%s)",

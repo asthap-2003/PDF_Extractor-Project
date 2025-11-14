@@ -268,6 +268,24 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
         except Exception:
             contract_no_val = None
 
+        # Prevent duplicate contract_no insertion: if a non-empty contract_no exists already, skip
+        try:
+            if contract_no_val:
+                cursor.execute("SELECT contract_id FROM contracts WHERE contract_no=%s LIMIT 1", (contract_no_val,))
+                dup = cursor.fetchone()
+                if dup:
+                    msg = f"Duplicate contract_no detected ({contract_no_val}) - skipping insert. existing_contract_id={dup[0]}"
+                    print(msg)
+                    try:
+                        log_event(msg)
+                    except Exception:
+                        pass
+                    # Do not insert duplicate contract_no; caller will treat False as failure and move file to failed
+                    return False
+        except Exception:
+            # On DB check error, continue and allow insert attempt (unique index will protect)
+            pass
+
         # Insert contract row (with date and contract_no if available)
         cursor.execute("""
             INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format, date, contract_no)
@@ -886,12 +904,27 @@ def process_unprocessed_pdfs():
                 log_event(f"Successfully processed and moved {filename}")
             else:
                 failed_files.append(filename)
-                print(f"❌ Failed to save {filename}")
-                log_event(f"Failed to save {filename}")
+                # move the problematic PDF to a failed folder so it won't be retried
+                # move failed PDFs to a top-level failed_pdfs folder (not inside unprocessed_pdfs)
+                failed_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'failed_pdfs')
+                os.makedirs(failed_folder, exist_ok=True)
+                try:
+                    shutil.move(file_path, os.path.join(failed_folder, filename))
+                except Exception:
+                    pass
+                print(f"❌ Failed to save {filename}; moved to {failed_folder}")
+                log_event(f"Failed to save {filename}; moved to {failed_folder}")
         except Exception as e:
             failed_files.append(filename)
-            print(f"❌ Error processing {filename}: {e}")
-            log_event(f"Error processing {filename}: {e}")
+            # move to a top-level failed_pdfs folder on exception (not inside unprocessed_pdfs)
+            failed_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'failed_pdfs')
+            os.makedirs(failed_folder, exist_ok=True)
+            try:
+                shutil.move(file_path, os.path.join(failed_folder, filename))
+            except Exception:
+                pass
+            print(f"❌ Error processing {filename}: {e}; moved to {failed_folder}")
+            log_event(f"Error processing {filename}: {e}; moved to {failed_folder}")
 
     print(f"\n📊 Summary:")
     print(f"✅ Successfully processed: {len(processed_files)}")

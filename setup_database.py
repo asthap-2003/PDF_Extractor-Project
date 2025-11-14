@@ -153,6 +153,16 @@ def create_tables():
             # Column might already exist, which is fine
             print("contract_no column already exists or couldn't be added")
         conn.commit()
+        # Add unique index on contract_no to prevent duplicate non-NULL values
+        try:
+            cursor.execute("""
+            ALTER TABLE contracts
+            ADD UNIQUE KEY uq_contract_no (contract_no)
+            """)
+            print("Added unique index uq_contract_no on contract_no")
+        except Error as e:
+            # Index might already exist, which is fine
+            print("Unique index on contract_no already exists or couldn't be added")
         
     except Error as e:
         print(f"Error creating tables: {e}")
