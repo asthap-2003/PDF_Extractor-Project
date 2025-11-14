@@ -45,30 +45,39 @@ def parse_date_to_sql(date_str):
 
 
 def extract_bid_no(text):
-    """Extract Bid/RA/PBP No. from the text by scanning lines and using regex fallbacks."""
+    """Extract Bid/RA/PBP No. from the text by scanning lines and using stricter regex fallbacks.
+
+    The previous implementation sometimes matched inside other words (e.g. 'Contact' -> 'acctt').
+    We now require word boundaries for the Bid/RA/PBP tokens and try a few ordered patterns,
+    preferring line-by-line matches where a colon or dash separates the label and value.
+    """
     if not text:
         return None
 
-    # Scan line by line for obvious markers
+    patterns = [
+        # Bid/RA/PBP combined forms: 'Bid / RA / PBP No: 12345' or similar
+        r"\bBid\s*(?:/|,|\s)*RA\s*(?:/|,|\s)*PBP\b(?:\s*(?:No\.?|Number))?\s*[:\-]?\s*([A-Za-z0-9\-/_.]+)",
+        # Individual labels with word boundaries: require 'No' or 'Number' to avoid capturing 'Bid Type: Reverse'
+        r"\b(?:Bid|RA|PBP)\b\s*(?:No\.?|Number)\s*[:\-]?\s*([A-Za-z0-9\-/_.]+)",
+    ]
+
+    # Try line-by-line first to avoid accidental matches inside longer words
     for line in text.splitlines():
-        low = line.lower()
-        if 'bid/ra/pbp no' in low or 'bid/ra/pbp no.' in low or 'bid/ra/pbp' in low:
-            # try to split on ':' or '-' and take the remainder
-            parts = re.split(r'[:\-]', line, maxsplit=1)
-            if len(parts) > 1:
-                val = parts[1].strip()
-                if val:
-                    return val.split()[0].strip()
+        for pat in patterns:
+            m = re.search(pat, line, re.IGNORECASE)
+            if m:
+                val = m.group(1).strip().strip('.,;')
+                # basic sanity: ignore values that are too short or clearly noise
+                if len(val) >= 2 and not re.fullmatch(r"[a-z]{1,6}", val, re.IGNORECASE):
+                    return val
 
-        # generic regex for variants like 'Bid No:', 'RA No:', 'PBP No.'
-        m = re.search(r"(?:Bid|RA|PBP)\s*(?:/|\s)?\s*(?:No\.?|Number)?\s*[:\-]?\s*([A-Za-z0-9\-/_.]+)", line, re.IGNORECASE)
+    # Fallback: search entire document
+    for pat in patterns:
+        m = re.search(pat, text, re.IGNORECASE)
         if m:
-            return m.group(1).strip()
-
-    # fallback: search whole document
-    m = re.search(r"(?:Bid|RA|PBP)\s*(?:/|\s)?\s*(?:No\.?|Number)?\s*[:\-]?\s*([A-Za-z0-9\-/_.]+)", text, re.IGNORECASE)
-    if m:
-        return m.group(1).strip()
+            val = m.group(1).strip().strip('.,;')
+            if len(val) >= 2 and not re.fullmatch(r"[a-z]{1,6}", val, re.IGNORECASE):
+                return val
 
     return None
 

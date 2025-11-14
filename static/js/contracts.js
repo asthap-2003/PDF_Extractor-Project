@@ -56,6 +56,17 @@ function formatDate(dateStr) {
     return 'N/A';
 }
 
+// Simple HTML escape to prevent injection when rendering values in the DOM
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // Initialize contracts data (called from template)
 function initializeContractsData(contractsData, itemsPerPage) {
     allContracts = contractsData;
@@ -242,6 +253,7 @@ function displayFilteredContractsPaginated() {
                         <div class="data-item"><strong>Department:</strong> ${contract.department || 'N/A'}</div>
                         <div class="data-item"><strong>Organization:</strong> ${contract.organisation_name || 'N/A'}</div>
                         <div class="data-item"><strong>Office Zone:</strong> ${contract.office_zone || 'N/A'}</div>
+                        <div class="data-item"><strong>Bid No:</strong> <b>${contract.bid_no ? escapeHtml(contract.bid_no) : 'N/A'}</b></div>
                     </div>
                 </td>
                 <td>
@@ -282,10 +294,11 @@ function displayFilteredContractsPaginated() {
                         </div>
                         <div class="data-item"><strong>Total Value:</strong> ₹${contract.total_order_value || 'N/A'}</div>
                     </div>
-                    <div class="meta-section">
-                            <div class="data-item" ><strong>Date:</strong> ${formatDate(contract.date)}</div>
-                            <div class="data-item" ><strong>Contract No:</strong> ${contract.contract_no || 'N/A'}</div>
-                    </div>
+            <div class="meta-section">
+                <div class="data-item" ><strong>Date:</strong> ${formatDate(contract.date)}</div>
+                <div class="data-item" ><strong>BID:</strong> ${contract.bid_no ? ('<a href="/view/' + contract.contract_id + '" target="_blank">' + escapeHtml(contract.bid_no) + '</a>') : 'N/A'}</div>
+                <div class="data-item" ><strong>Contract No:</strong> ${contract.contract_no || 'N/A'}</div>
+            </div>
                 </td>
                 <td>
                     <div class="action-buttons">
