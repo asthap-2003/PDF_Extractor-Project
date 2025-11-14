@@ -15,6 +15,47 @@ let searchInput, clearSearchBtn, stateSearchSelect, clearStateSearchBtn;
 let dateFromInput, dateToInput, clearAllFiltersBtn, tableBody, paginationContainer;
 let fromDatePicker, toDatePicker;
 
+// Helpers
+function formatDate(dateStr) {
+    if (!dateStr) return 'N/A';
+    // If already in DD-MMM-YYYY format (e.g., 14-Nov-2025), return as-is
+    if (/^\d{2}-[A-Za-z]{3}-\d{4}$/.test(dateStr)) return dateStr;
+
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    // Accept formats like YYYY-MM-DD or YYYY-MM-DD HH:MM:SS
+    const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+        const y = isoMatch[1];
+        const m = parseInt(isoMatch[2], 10);
+        const d = isoMatch[3];
+        const mon = months[m-1] || isoMatch[2];
+        return `${d}-${mon}-${y}`;
+    }
+
+    // If in DD/MM/YYYY format, convert
+    const dmyMatch = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (dmyMatch) {
+        const d = dmyMatch[1];
+        const m = parseInt(dmyMatch[2], 10);
+        const y = dmyMatch[3];
+        const mon = months[m-1] || dmyMatch[2];
+        return `${d}-${mon}-${y}`;
+    }
+
+    // Fallback: try parsing with Date and format
+    const dt = new Date(dateStr);
+    if (!isNaN(dt.getTime())) {
+        const d = String(dt.getDate()).padStart(2, '0');
+        const m = dt.getMonth();
+        const y = dt.getFullYear();
+        const mon = months[m] || String(m+1).padStart(2,'0');
+        return `${d}-${mon}-${y}`;
+    }
+
+    return 'N/A';
+}
+
 // Initialize contracts data (called from template)
 function initializeContractsData(contractsData, itemsPerPage) {
     allContracts = contractsData;
@@ -241,9 +282,9 @@ function displayFilteredContractsPaginated() {
                         </div>
                         <div class="data-item"><strong>Total Value:</strong> ₹${contract.total_order_value || 'N/A'}</div>
                     </div>
-                    <div class="meta-section" style="margin-top:8px;">
-                        <div class="data-item" ><strong>Date:</strong> ${contract.date || 'N/A'}</div>
-                        <div class="data-item" ><strong>Contract No:</strong> ${contract.contract_no || 'N/A'}</div>
+                    <div class="meta-section">
+                            <div class="data-item" ><strong>Date:</strong> ${formatDate(contract.date)}</div>
+                            <div class="data-item" ><strong>Contract No:</strong> ${contract.contract_no || 'N/A'}</div>
                     </div>
                 </td>
                 <td>
