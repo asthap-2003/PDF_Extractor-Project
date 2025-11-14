@@ -372,7 +372,7 @@ td:nth-child(5) {
 
 .meta-section {
      position: absolute;
-    top: 138px;
+    top: 151px;
     left: 60px;
     display: grid;
     gap: 0.25rem; /* reduced gap to tighten spacing between meta lines */
