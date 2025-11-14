@@ -375,7 +375,7 @@ td:nth-child(5) {
     top: 138px;
     left: 60px;
     display: grid;
-    gap: 0.75rem;
+    gap: 0.25rem; /* reduced gap to tighten spacing between meta lines */
     align-items: center;
     background: rgba(255, 255, 255, 0.95);
     padding: 4px 11px;
@@ -390,6 +390,7 @@ td:nth-child(5) {
     display: inline-flex;
     margin: 0;
     font-size: 0.75rem;
+    line-height: 1; /* reduce line-height so items are closer vertically */
     color: var(--text-secondary);
 }
 

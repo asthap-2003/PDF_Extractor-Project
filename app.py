@@ -691,6 +691,7 @@ def contracts_list():
                 c.text_format,
                 c.date,
                 c.contract_no,
+                c.bid_no,
                 (
                     SELECT GROUP_CONCAT(p.product_name SEPARATOR ', ')
                     FROM products p

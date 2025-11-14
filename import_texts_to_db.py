@@ -44,6 +44,35 @@ def parse_date_to_sql(date_str):
     return None
 
 
+def extract_bid_no(text):
+    """Extract Bid/RA/PBP No. from the text by scanning lines and using regex fallbacks."""
+    if not text:
+        return None
+
+    # Scan line by line for obvious markers
+    for line in text.splitlines():
+        low = line.lower()
+        if 'bid/ra/pbp no' in low or 'bid/ra/pbp no.' in low or 'bid/ra/pbp' in low:
+            # try to split on ':' or '-' and take the remainder
+            parts = re.split(r'[:\-]', line, maxsplit=1)
+            if len(parts) > 1:
+                val = parts[1].strip()
+                if val:
+                    return val.split()[0].strip()
+
+        # generic regex for variants like 'Bid No:', 'RA No:', 'PBP No.'
+        m = re.search(r"(?:Bid|RA|PBP)\s*(?:/|\s)?\s*(?:No\.?|Number)?\s*[:\-]?\s*([A-Za-z0-9\-/_.]+)", line, re.IGNORECASE)
+        if m:
+            return m.group(1).strip()
+
+    # fallback: search whole document
+    m = re.search(r"(?:Bid|RA|PBP)\s*(?:/|\s)?\s*(?:No\.?|Number)?\s*[:\-]?\s*([A-Za-z0-9\-/_.]+)", text, re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+
+    return None
+
+
 def upsert_texts():
     if not os.path.isdir(TEXT_DIR):
         print(f"No '{TEXT_DIR}' directory found. Nothing to do.")
@@ -92,12 +121,19 @@ def upsert_texts():
         except Exception:
             contract_no_val = None
 
+        # Extract bid number if present
+        bid_no_val = None
+        try:
+            bid_no_val = extract_bid_no(content)
+        except Exception:
+            bid_no_val = None
+
         if row:
             contract_id, existing_len = row
             # Update text_format (overwrite) and date if parsed
             try:
-                cursor.execute("UPDATE contracts SET text_format=%s, date=%s, contract_no=%s WHERE contract_id=%s",
-                               (content, parsed_date, contract_no_val, contract_id))
+                cursor.execute("UPDATE contracts SET text_format=%s, date=%s, contract_no=%s, bid_no=%s WHERE contract_id=%s",
+                               (content, parsed_date, contract_no_val, bid_no_val, contract_id))
                 conn.commit()
                 updated += 1
                 print(f"Updated contract {contract_id} for {pdf_name} (text len={len(content)})")
@@ -112,14 +148,14 @@ def upsert_texts():
                     cursor.execute("SELECT contract_id FROM contracts WHERE contract_no=%s LIMIT 1", (contract_no_val,))
                     existing = cursor.fetchone()
                     if existing:
-                                # Move the .txt file to a top-level failed folder so it won't be reprocessed
-                                failed_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'failed_pdf_texts')
-                                os.makedirs(failed_dir, exist_ok=True)
-                                try:
-                                    shutil.move(txt_path, os.path.join(failed_dir, fname))
-                                except Exception:
-                                    # If move fails, ignore but log
-                                    print(f"Could not move {txt_path} to failed folder")
+                        # Move the .txt file to a top-level failed folder so it won't be reprocessed
+                        failed_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'failed_pdf_texts')
+                        os.makedirs(failed_dir, exist_ok=True)
+                        try:
+                            shutil.move(txt_path, os.path.join(failed_dir, fname))
+                        except Exception:
+                            # If move fails, ignore but log
+                            print(f"Could not move {txt_path} to failed folder")
                         print(f"Skipped {pdf_name}: contract_no {contract_no_val} already exists (contract_id={existing[0]})")
                         continue
                 except Exception as e:
@@ -128,8 +164,8 @@ def upsert_texts():
 
             new_id = str(uuid.uuid4())
             try:
-                cursor.execute("INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format, date, contract_no) VALUES (%s,%s,%s,%s,%s,%s,%s)",
-                               (new_id, pdf_name, datetime.now(), '', content, parsed_date, contract_no_val))
+                cursor.execute("INSERT INTO contracts (contract_id, filename, upload_time, total_order_value, text_format, date, contract_no, bid_no) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
+                               (new_id, pdf_name, datetime.now(), '', content, parsed_date, contract_no_val, bid_no_val))
                 conn.commit()
                 inserted += 1
                 print(f"Inserted new contract {new_id} for {pdf_name}")

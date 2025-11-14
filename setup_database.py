@@ -152,6 +152,16 @@ def create_tables():
         except Error as e:
             # Column might already exist, which is fine
             print("contract_no column already exists or couldn't be added")
+        # add bid_no column if missing
+        try:
+            cursor.execute("""
+            ALTER TABLE contracts
+            ADD COLUMN bid_no VARCHAR(255) DEFAULT NULL
+            """)
+            print("Added bid_no column to contracts table")
+        except Error as e:
+            # Column might already exist, which is fine
+            print("bid_no column already exists or couldn't be added")
         conn.commit()
         # Add unique index on contract_no to prevent duplicate non-NULL values
         try:
