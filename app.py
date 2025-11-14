@@ -807,6 +807,10 @@ def export_contracts_excel():
                         SELECT 
                             c.contract_id,
                             c.filename,
+                            c.total_order_value,
+                            c.date,
+                            c.contract_no,
+                            c.bid_no,
                             o.type as organisation_type,
                             o.ministry,
                             o.department,
@@ -823,12 +827,22 @@ def export_contracts_excel():
                             b.contact_no as buyer_contact_no,
                             b.email_id as buyer_email_id,
                             b.gstin as buyer_gstin,
-                            b.address as buyer_address
+                            b.address as buyer_address,
+                            GROUP_CONCAT(DISTINCT p.product_name SEPARATOR ' | ') AS product_names,
+                            GROUP_CONCAT(DISTINCT p.brand SEPARATOR ' | ') AS product_brands,
+                            GROUP_CONCAT(DISTINCT p.brand_type SEPARATOR ' | ') AS product_brand_types,
+                            GROUP_CONCAT(DISTINCT p.catalogue_status SEPARATOR ' | ') AS product_catalogue_statuses,
+                            GROUP_CONCAT(DISTINCT p.selling_as SEPARATOR ' | ') AS product_selling_as,
+                            GROUP_CONCAT(DISTINCT p.category_name_quadrant SEPARATOR ' | ') AS product_category_quadrants,
+                            GROUP_CONCAT(DISTINCT p.model SEPARATOR ' | ') AS product_models,
+                            GROUP_CONCAT(DISTINCT p.hsn_code SEPARATOR ' | ') AS product_hsn_codes
                         FROM contracts c
                         LEFT JOIN organisations o ON c.contract_id = o.contract_id
                         LEFT JOIN sellers s ON c.contract_id = s.contract_id
                         LEFT JOIN buyers b ON c.contract_id = b.contract_id
+                        LEFT JOIN products p ON c.contract_id = p.contract_id
                         WHERE c.contract_id IN ({placeholders})
+                        GROUP BY c.contract_id
                         ORDER BY c.upload_time DESC, c.contract_id DESC
                     """
                     cursor.execute(query, contract_ids)
@@ -839,11 +853,14 @@ def export_contracts_excel():
                 rows = []
         else:
             # GET request - export all data (fallback)
-            cursor.execute(
-                """
+            query = """
                 SELECT 
                     c.contract_id,
                     c.filename,
+                    c.total_order_value,
+                    c.date,
+                    c.contract_no,
+                    c.bid_no,
                     o.type as organisation_type,
                     o.ministry,
                     o.department,
@@ -860,16 +877,26 @@ def export_contracts_excel():
                     b.contact_no as buyer_contact_no,
                     b.email_id as buyer_email_id,
                     b.gstin as buyer_gstin,
-                    b.address as buyer_address
+                    b.address as buyer_address,
+                    GROUP_CONCAT(DISTINCT p.product_name SEPARATOR ' | ') AS product_names,
+                    GROUP_CONCAT(DISTINCT p.brand SEPARATOR ' | ') AS product_brands,
+                    GROUP_CONCAT(DISTINCT p.brand_type SEPARATOR ' | ') AS product_brand_types,
+                    GROUP_CONCAT(DISTINCT p.catalogue_status SEPARATOR ' | ') AS product_catalogue_statuses,
+                    GROUP_CONCAT(DISTINCT p.selling_as SEPARATOR ' | ') AS product_selling_as,
+                    GROUP_CONCAT(DISTINCT p.category_name_quadrant SEPARATOR ' | ') AS product_category_quadrants,
+                    GROUP_CONCAT(DISTINCT p.model SEPARATOR ' | ') AS product_models,
+                    GROUP_CONCAT(DISTINCT p.hsn_code SEPARATOR ' | ') AS product_hsn_codes
                 FROM contracts c
                 LEFT JOIN organisations o ON c.contract_id = o.contract_id
                 LEFT JOIN sellers s ON c.contract_id = s.contract_id
                 LEFT JOIN buyers b ON c.contract_id = b.contract_id
+                LEFT JOIN products p ON c.contract_id = p.contract_id
                 WHERE (o.organisation_name IS NOT NULL AND o.organisation_name != '') 
                    OR (s.company_name IS NOT NULL AND s.company_name != '')
+                GROUP BY c.contract_id
                 ORDER BY c.upload_time DESC, c.contract_id DESC
                 """
-            )
+            cursor.execute(query)
             rows = cursor.fetchall()
             cursor.close()
             conn.close()
@@ -885,48 +912,70 @@ def export_contracts_excel():
         id_fmt = workbook.add_format({'border': 1})
         filename_fmt = workbook.add_format({'border': 1})
 
-        # Headers
-        headers = ['Contract ID', 'Filename', 'Organization', 'Seller', 'Buyer']
+        # Headers - each attribute in its own column
+        headers = [
+            'Contract ID', 'Filename',
+            'Org Type', 'Org Ministry', 'Org Department', 'Org Name', 'Office Zone',
+            'Seller Company', 'Seller ID', 'Seller Contact', 'Seller Email', 'Seller Address', 'Seller MSME', 'Seller GSTIN',
+            'Buyer Designation', 'Buyer Contact', 'Buyer Email', 'Buyer GSTIN', 'Buyer Address',
+            'Product Names', 'Product Brands', 'Product Brand Types', 'Product Catalogue Statuses', 'Product Selling As', 'Product Category Quadrants', 'Product Models', 'Product HSN Codes',
+            'Total Order Value', 'Date', 'Contract No', 'BID'
+        ]
         for c, h in enumerate(headers):
             worksheet.write(0, c, h, header_fmt)
 
-        # Column widths
-        worksheet.set_column(0, 0, 18)
-        worksheet.set_column(1, 1, 38)
-        worksheet.set_column(2, 4, 42)
+        # Column widths - set reasonable defaults
+        worksheet.set_column(0, 0, 18)  # Contract ID
+        worksheet.set_column(1, 1, 38)  # Filename
+        worksheet.set_column(2, 6, 20)  # Org fields
+        worksheet.set_column(7, 13, 22) # Seller fields
+        worksheet.set_column(14, 18, 20) # Buyer fields
+        worksheet.set_column(19, 26, 30) # Product aggregated fields
+        worksheet.set_column(27, 30, 18) # Totals and metadata
 
         # Rows
         row_idx = 1
         for r in rows:
-            org_text = "\n".join([
-                f"Type: {r.get('organisation_type') or 'N/A'}",
-                f"Ministry: {r.get('ministry') or 'N/A'}",
-                f"Department: {r.get('department') or 'N/A'}",
-                f"Organization: {r.get('organisation_name') or 'N/A'}",
-                f"Office Zone: {r.get('office_zone') or 'N/A'}",
-            ])
-            seller_text = "\n".join([
-                f"Company: {r.get('company_name') or 'N/A'}",
-                f"Seller ID: {r.get('gem_seller_id') or 'N/A'}",
-                f"Contact: {r.get('seller_contact_no') or 'N/A'}",
-                f"Email: {r.get('seller_email_id') or 'N/A'}",
-                f"Address: {r.get('seller_address') or 'N/A'}",
-                f"MSME: {r.get('msme_registration_number') or 'N/A'}",
-                f"GSTIN: {r.get('seller_gstin') or 'N/A'}",
-            ])
-            buyer_text = "\n".join([
-                f"Designation: {r.get('designation') or 'N/A'}",
-                f"Contact: {r.get('buyer_contact_no') or 'N/A'}",
-                f"Email: {r.get('buyer_email_id') or 'N/A'}",
-                f"GSTIN: {r.get('buyer_gstin') or 'N/A'}",
-                f"Address: {r.get('buyer_address') or 'N/A'}",
-            ])
-
             worksheet.write(row_idx, 0, r.get('contract_id') or '', id_fmt)
             worksheet.write(row_idx, 1, r.get('filename') or '', filename_fmt)
-            worksheet.write(row_idx, 2, org_text, cell_fmt)
-            worksheet.write(row_idx, 3, seller_text, cell_fmt)
-            worksheet.write(row_idx, 4, buyer_text, cell_fmt)
+
+            worksheet.write(row_idx, 2, r.get('organisation_type') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 3, r.get('ministry') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 4, r.get('department') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 5, r.get('organisation_name') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 6, r.get('office_zone') or 'N/A', cell_fmt)
+
+            worksheet.write(row_idx, 7, r.get('company_name') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 8, r.get('gem_seller_id') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 9, r.get('seller_contact_no') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 10, r.get('seller_email_id') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 11, r.get('seller_address') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 12, r.get('msme_registration_number') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 13, r.get('seller_gstin') or 'N/A', cell_fmt)
+
+            worksheet.write(row_idx, 14, r.get('designation') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 15, r.get('buyer_contact_no') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 16, r.get('buyer_email_id') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 17, r.get('buyer_gstin') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 18, r.get('buyer_address') or 'N/A', cell_fmt)
+
+            worksheet.write(row_idx, 19, r.get('product_names') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 20, r.get('product_brands') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 21, r.get('product_brand_types') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 22, r.get('product_catalogue_statuses') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 23, r.get('product_selling_as') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 24, r.get('product_category_quadrants') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 25, r.get('product_models') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 26, r.get('product_hsn_codes') or 'N/A', cell_fmt)
+
+            worksheet.write(row_idx, 27, r.get('total_order_value') or 'N/A', cell_fmt)
+            # Ensure date is written as string if it's a datetime object
+            dval = r.get('date')
+            if hasattr(dval, 'strftime'):
+                dval = dval.strftime('%Y-%m-%d')
+            worksheet.write(row_idx, 28, dval or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 29, r.get('contract_no') or 'N/A', cell_fmt)
+            worksheet.write(row_idx, 30, r.get('bid_no') or 'N/A', cell_fmt)
 
             row_idx += 1
 
