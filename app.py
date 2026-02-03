@@ -946,68 +946,75 @@ def export_contracts_excel():
                                 continue
                             code = row[0].strip()
                             cityname = row[1].strip() if len(row) > 1 else ''
+                            statename = ''
+                            if len(row) > 2:
+                                statename = row[2].strip()
                             if code:
-                                _pincode_map[code] = cityname
+                                _pincode_map[code] = {'city': cityname, 'state': statename}
             except Exception:
                 _pincode_map = {}
             return _pincode_map
+        # List of Indian states/UTs for best-effort matching
+        INDIAN_STATES = [
+            'ANDHRA PRADESH','ARUNACHAL PRADESH','ASSAM','BIHAR','CHHATTISGARH','GOA','GUJARAT','HARYANA','HIMACHAL PRADESH',
+            'JHARKHAND','KARNATAKA','KERALA','MADHYA PRADESH','MAHARASHTRA','MANIPUR','MEGHALAYA','MIZORAM','NAGALAND',
+            'ODISHA','PUNJAB','RAJASTHAN','SIKKIM','TAMIL NADU','TELANGANA','TRIPURA','UTTAR PRADESH','UTTARAKHAND','WEST BENGAL',
+            'DELHI','PONDICHERRY','ANDAMAN','LAKSHADWEEP','JAMMU AND KASHMIR','LADAKH'
+        ]
 
         def parse_city_state(address):
             if not address:
                 return '', ''
 
-            # Try to find patterns like 'STATE-389151' or any 5-6 digit pincode
-            m = re.search(r'([A-Za-z\s]+)-\s*(\d{5,6})', address)
-            pincode = None
-            state_name = ''
-            if m:
-                state_name = m.group(1).strip()
-                pincode = m.group(2).strip()
-            else:
-                # fallback: search for any 5-6 digit token in the address
-                m2 = re.search(r'(\d{5,6})', address)
-                if m2:
-                    pincode = m2.group(1)
+            addr = address.strip()
+            # find pincode (5 or 6 digits)
+            pincode_match = re.search(r'(\d{5,6})', addr)
+            pincode = pincode_match.group(1) if pincode_match else None
 
-            # Load mapping and try to resolve city from pincode
             pmap = _load_pincode_map()
-            if pincode:
-                city_from_pin = pmap.get(pincode)
-                # If mapping found, return mapped city and state (state may be empty)
-                if city_from_pin:
-                    if not state_name:
-                        m3 = re.search(r'([A-Za-z\s]+)[-\s]'+re.escape(pincode), address)
-                        if m3:
-                            state_name = m3.group(1).strip()
-                    # normalize state (remove trailing hyphen/pincode)
-                    state_clean = re.sub(r'[-\s]*\d{5,6}', '', state_name).strip() if state_name else ''
-                    return city_from_pin, state_clean.upper() if state_clean else ''
+            if pincode and pincode in pmap:
+                entry = pmap.get(pincode, {})
+                city = entry.get('city', '')
+                state = entry.get('state', '')
+                if state:
+                    state = state.upper()
                 else:
-                    # No mapping available: use pincode as city value (so it's visible), and try to derive state
-                    if not state_name:
-                        m3 = re.search(r'([A-Za-z\s]+)[-\s]'+re.escape(pincode), address)
-                        if m3:
-                            state_name = m3.group(1).strip()
-                        else:
-                            # try last comma-separated token as state
-                            parts = [p.strip() for p in address.split(',') if p.strip()]
-                            if parts:
-                                state_name = re.sub(r'[-\s]*\d{5,6}', '', parts[-1]).strip()
-                    state_clean = re.sub(r'[-\s]*\d{5,6}', '', state_name).strip() if state_name else ''
-                    return pincode, state_clean.upper() if state_clean else ''
+                    # try to extract state token before pincode
+                    m = re.search(r'([A-Za-z\s]+)[-\s]'+re.escape(pincode), addr)
+                    if m:
+                        state = m.group(1).strip().upper()
+                return city, state
 
-            # Fallback: use comma-splitting like before (take last two meaningful parts)
-            parts = [p.strip() for p in address.split(',') if p.strip()]
-            if len(parts) >= 2:
-                # last part often is state/pincode, second-last is city
-                last = parts[-1]
-                second_last = parts[-2]
-                # clean state (remove trailing hyphen/pincode tokens)
-                state_clean = re.sub(r'[-\s]*\d{5,6}', '', last).strip()
-                return second_last, state_clean.upper() if state_clean else ''
-            if len(parts) == 1:
-                return parts[0], ''
-            return '', ''
+            # If pincode exists but not mapped, try to derive city/state from tokens
+            parts = [p.strip() for p in addr.split(',') if p.strip()]
+            # Try to detect state by matching known states in the address
+            addr_upper = addr.upper()
+            matched_state = ''
+            for st in INDIAN_STATES:
+                if st in addr_upper:
+                    matched_state = st
+                    break
+
+            city_guess = ''
+            state_guess = matched_state
+            if parts:
+                if matched_state:
+                    # if state found, try to find the token immediately before it in parts
+                    for i, tok in enumerate(parts):
+                        if matched_state in tok.upper():
+                            if i > 0:
+                                city_guess = parts[i-1]
+                            break
+                else:
+                    # no matched state: use second-last as city and last as state candidate
+                    if len(parts) >= 2:
+                        city_guess = parts[-2]
+                        state_guess = re.sub(r'[-\s]*\d{5,6}', '', parts[-1]).strip().upper()
+                    elif len(parts) == 1:
+                        # single token - remove pincode if any
+                        city_guess = re.sub(r'\d{5,6}', '', parts[0]).strip()
+
+            return city_guess, state_guess or ''
 
         # Rows - write only the requested columns
         row_idx = 1
