@@ -912,70 +912,127 @@ def export_contracts_excel():
         id_fmt = workbook.add_format({'border': 1})
         filename_fmt = workbook.add_format({'border': 1})
 
-        # Headers - each attribute in its own column
-        headers = [
-            'Contract ID', 'Filename',
-            'Org Type', 'Org Ministry', 'Org Department', 'Org Name', 'Office Zone',
-            'Seller Company', 'Seller ID', 'Seller Contact', 'Seller Email', 'Seller Address', 'Seller MSME', 'Seller GSTIN',
-            'Buyer Designation', 'Buyer Contact', 'Buyer Email', 'Buyer GSTIN', 'Buyer Address',
-            'Product Names', 'Product Brands', 'Product Brand Types', 'Product Catalogue Statuses', 'Product Selling As', 'Product Category Quadrants', 'Product Models', 'Product HSN Codes',
-            'Total Order Value', 'Date', 'Contract No', 'BID'
-        ]
+        # Headers - simplified to match requested image columns
+        headers = ['No', 'Date', 'Seller Name', 'Address', 'City', 'State', 'Mo no.', 'Email ID']
         for c, h in enumerate(headers):
             worksheet.write(0, c, h, header_fmt)
 
-        # Column widths - set reasonable defaults
-        worksheet.set_column(0, 0, 18)  # Contract ID
-        worksheet.set_column(1, 1, 38)  # Filename
-        worksheet.set_column(2, 6, 20)  # Org fields
-        worksheet.set_column(7, 13, 22) # Seller fields
-        worksheet.set_column(14, 18, 20) # Buyer fields
-        worksheet.set_column(19, 26, 30) # Product aggregated fields
-        worksheet.set_column(27, 30, 18) # Totals and metadata
+        # Column widths for the simplified sheet
+        worksheet.set_column(0, 0, 6)   # No
+        worksheet.set_column(1, 1, 14)  # Date
+        worksheet.set_column(2, 2, 40)  # Seller Name
+        worksheet.set_column(3, 3, 60)  # Address
+        worksheet.set_column(4, 4, 20)  # City
+        worksheet.set_column(5, 5, 20)  # State
+        worksheet.set_column(6, 6, 18)  # Mo no.
+        worksheet.set_column(7, 7, 32)  # Email ID
 
-        # Rows
+        # Helper to parse city and state from seller_address.
+        # Tries to extract a pincode if present like 'STATE-389151' or trailing pincode,
+        # then looks up the city from `data/pincode_city.csv`. Falls back to comma-split.
+        _pincode_map = None
+        def _load_pincode_map():
+            nonlocal _pincode_map
+            if _pincode_map is not None:
+                return _pincode_map
+            _pincode_map = {}
+            try:
+                map_path = os.path.join(os.path.dirname(__file__), 'data', 'pincode_city.csv')
+                if os.path.exists(map_path):
+                    with open(map_path, newline='', encoding='utf-8') as mf:
+                        rdr = csv.reader(mf)
+                        for row in rdr:
+                            if not row:
+                                continue
+                            code = row[0].strip()
+                            cityname = row[1].strip() if len(row) > 1 else ''
+                            if code:
+                                _pincode_map[code] = cityname
+            except Exception:
+                _pincode_map = {}
+            return _pincode_map
+
+        def parse_city_state(address):
+            if not address:
+                return '', ''
+
+            # Try to find patterns like 'STATE-389151' or any 5-6 digit pincode
+            m = re.search(r'([A-Za-z\s]+)-\s*(\d{5,6})', address)
+            pincode = None
+            state_name = ''
+            if m:
+                state_name = m.group(1).strip()
+                pincode = m.group(2).strip()
+            else:
+                # fallback: search for any 5-6 digit token in the address
+                m2 = re.search(r'(\d{5,6})', address)
+                if m2:
+                    pincode = m2.group(1)
+
+            # Load mapping and try to resolve city from pincode
+            pmap = _load_pincode_map()
+            if pincode:
+                city_from_pin = pmap.get(pincode)
+                # If mapping found, return mapped city and state (state may be empty)
+                if city_from_pin:
+                    if not state_name:
+                        m3 = re.search(r'([A-Za-z\s]+)[-\s]'+re.escape(pincode), address)
+                        if m3:
+                            state_name = m3.group(1).strip()
+                    # normalize state (remove trailing hyphen/pincode)
+                    state_clean = re.sub(r'[-\s]*\d{5,6}', '', state_name).strip() if state_name else ''
+                    return city_from_pin, state_clean.upper() if state_clean else ''
+                else:
+                    # No mapping available: use pincode as city value (so it's visible), and try to derive state
+                    if not state_name:
+                        m3 = re.search(r'([A-Za-z\s]+)[-\s]'+re.escape(pincode), address)
+                        if m3:
+                            state_name = m3.group(1).strip()
+                        else:
+                            # try last comma-separated token as state
+                            parts = [p.strip() for p in address.split(',') if p.strip()]
+                            if parts:
+                                state_name = re.sub(r'[-\s]*\d{5,6}', '', parts[-1]).strip()
+                    state_clean = re.sub(r'[-\s]*\d{5,6}', '', state_name).strip() if state_name else ''
+                    return pincode, state_clean.upper() if state_clean else ''
+
+            # Fallback: use comma-splitting like before (take last two meaningful parts)
+            parts = [p.strip() for p in address.split(',') if p.strip()]
+            if len(parts) >= 2:
+                # last part often is state/pincode, second-last is city
+                last = parts[-1]
+                second_last = parts[-2]
+                # clean state (remove trailing hyphen/pincode tokens)
+                state_clean = re.sub(r'[-\s]*\d{5,6}', '', last).strip()
+                return second_last, state_clean.upper() if state_clean else ''
+            if len(parts) == 1:
+                return parts[0], ''
+            return '', ''
+
+        # Rows - write only the requested columns
         row_idx = 1
-        for r in rows:
-            worksheet.write(row_idx, 0, r.get('contract_id') or '', id_fmt)
-            worksheet.write(row_idx, 1, r.get('filename') or '', filename_fmt)
-
-            worksheet.write(row_idx, 2, r.get('organisation_type') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 3, r.get('ministry') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 4, r.get('department') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 5, r.get('organisation_name') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 6, r.get('office_zone') or 'N/A', cell_fmt)
-
-            worksheet.write(row_idx, 7, r.get('company_name') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 8, r.get('gem_seller_id') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 9, r.get('seller_contact_no') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 10, r.get('seller_email_id') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 11, r.get('seller_address') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 12, r.get('msme_registration_number') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 13, r.get('seller_gstin') or 'N/A', cell_fmt)
-
-            worksheet.write(row_idx, 14, r.get('designation') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 15, r.get('buyer_contact_no') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 16, r.get('buyer_email_id') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 17, r.get('buyer_gstin') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 18, r.get('buyer_address') or 'N/A', cell_fmt)
-
-            worksheet.write(row_idx, 19, r.get('product_names') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 20, r.get('product_brands') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 21, r.get('product_brand_types') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 22, r.get('product_catalogue_statuses') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 23, r.get('product_selling_as') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 24, r.get('product_category_quadrants') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 25, r.get('product_models') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 26, r.get('product_hsn_codes') or 'N/A', cell_fmt)
-
-            worksheet.write(row_idx, 27, r.get('total_order_value') or 'N/A', cell_fmt)
-            # Ensure date is written as string if it's a datetime object
-            dval = r.get('date')
+        for idx, r in enumerate(rows, start=1):
+            # Prefer c.date, fallback to upload_time
+            dval = r.get('date') or r.get('upload_time')
             if hasattr(dval, 'strftime'):
-                dval = dval.strftime('%Y-%m-%d')
-            worksheet.write(row_idx, 28, dval or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 29, r.get('contract_no') or 'N/A', cell_fmt)
-            worksheet.write(row_idx, 30, r.get('bid_no') or 'N/A', cell_fmt)
+                date_str = dval.strftime('%-m/%-d/%Y') if hasattr(dval, 'strftime') else str(dval)
+            else:
+                date_str = '' if not dval else str(dval)
+
+            seller_name = r.get('company_name') or ''
+            address = r.get('seller_address') or ''
+            city, state = parse_city_state(address)
+            mo_no = r.get('seller_contact_no') or ''
+            email = r.get('seller_email_id') or ''
+
+            worksheet.write(row_idx, 0, idx, id_fmt)
+            worksheet.write(row_idx, 1, date_str, cell_fmt)
+            worksheet.write(row_idx, 2, seller_name, cell_fmt)
+            worksheet.write(row_idx, 3, address, cell_fmt)
+            worksheet.write(row_idx, 4, city, cell_fmt)
+            worksheet.write(row_idx, 5, state, cell_fmt)
+            worksheet.write(row_idx, 6, mo_no, cell_fmt)
+            worksheet.write(row_idx, 7, email, cell_fmt)
 
             row_idx += 1
 
