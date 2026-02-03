@@ -11,6 +11,7 @@ import mysql.connector
 from mysql.connector import Error
 import uuid
 from datetime import datetime
+from markupsafe import escape as m_escape
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
@@ -31,6 +32,21 @@ app = Flask(__name__)
     
 app.config['UPLOAD_FOLDER'] = 'unprocessed_pdfs'
 app.secret_key = 'replace-this-with-a-strong-secret-key'
+
+
+# Template filter to clean contact values (remove leading colons/dashes)
+@app.template_filter('clean_contact')
+def clean_contact_filter(val):
+    try:
+        if val is None:
+            return 'N/A'
+        s = str(val).strip()
+        s = re.sub(r'^\s*[:\-–—]+\s*', '', s)
+        if not s:
+            return 'N/A'
+        return m_escape(s)
+    except Exception:
+        return 'N/A'
 
 
 # ============================================

@@ -135,6 +135,25 @@ def clean_field_data(text):
     return text.strip()
 
 
+def normalize_contact_field(text):
+        """
+        Normalize contact field by removing leading labels and stray punctuation.
+
+        Examples cleaned:
+            "Contact No.: 011-29575035-5035" -> "011-29575035-5035"
+            ": 09824064186" -> "09824064186"
+            "Contact: : 09824..." -> "09824..."
+        """
+        if not text:
+                return ''
+        s = str(text).strip()
+        # Remove common leading label words like Contact, Contact No, Mob, Phone, Tel
+        s = re.sub(r'^\s*(?:Contact(?:\s*No\.?| No)?|Mob(?:ile)?|Mo\.?|Phone|Tel|Telephone)\s*[:\-–—\s]*', '', s, flags=re.IGNORECASE)
+        # Remove any leading colons/dashes left over
+        s = re.sub(r'^[\s:\-–—]+', '', s)
+        return s.strip()
+
+
 def clean_address(text):
     """
     Clean and extract address from OCR text.
@@ -312,7 +331,7 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
         """, (
             contract_id,
             clean_field_data(clean_hindi(buyer_data.get("Designation"))),
-            clean_field_data(clean_hindi(buyer_data.get("Contact No."))),
+            clean_field_data(normalize_contact_field(clean_hindi(buyer_data.get("Contact No.")))),
             clean_field_data(clean_hindi(buyer_data.get("Email ID"))),
             clean_field_data(clean_hindi(buyer_data.get("GSTIN"))),
             clean_address(buyer_data.get("Address"))
@@ -326,7 +345,7 @@ def save_to_database(contract_id, filename, organisation_data, buyer_data, selle
             contract_id,
             clean_field_data(clean_hindi(seller_data.get("GeM Seller ID"))),
             clean_field_data(clean_hindi(seller_data.get("Company Name"))),
-            clean_field_data(clean_hindi(seller_data.get("Contact No."))),
+            clean_field_data(normalize_contact_field(clean_hindi(seller_data.get("Contact No.")))),
             clean_field_data(clean_hindi(seller_data.get("Email ID"))),
             clean_address(seller_data.get("Address")),
             clean_field_data(clean_hindi(seller_data.get("MSME Registration number"))),
