@@ -97,6 +97,7 @@ def login():
     return render_template('login.html')
 
 
+
 @app.route('/logout')
 def logout():
     """
@@ -851,7 +852,8 @@ def export_contracts_excel():
                             GROUP_CONCAT(DISTINCT p.selling_as SEPARATOR ' | ') AS product_selling_as,
                             GROUP_CONCAT(DISTINCT p.category_name_quadrant SEPARATOR ' | ') AS product_category_quadrants,
                             GROUP_CONCAT(DISTINCT p.model SEPARATOR ' | ') AS product_models,
-                            GROUP_CONCAT(DISTINCT p.hsn_code SEPARATOR ' | ') AS product_hsn_codes
+                            GROUP_CONCAT(DISTINCT p.hsn_code SEPARATOR ' | ') AS product_hsn_codes,
+                            c.text_format
                         FROM contracts c
                         LEFT JOIN organisations o ON c.contract_id = o.contract_id
                         LEFT JOIN sellers s ON c.contract_id = s.contract_id
@@ -901,7 +903,8 @@ def export_contracts_excel():
                     GROUP_CONCAT(DISTINCT p.selling_as SEPARATOR ' | ') AS product_selling_as,
                     GROUP_CONCAT(DISTINCT p.category_name_quadrant SEPARATOR ' | ') AS product_category_quadrants,
                     GROUP_CONCAT(DISTINCT p.model SEPARATOR ' | ') AS product_models,
-                    GROUP_CONCAT(DISTINCT p.hsn_code SEPARATOR ' | ') AS product_hsn_codes
+                    GROUP_CONCAT(DISTINCT p.hsn_code SEPARATOR ' | ') AS product_hsn_codes,
+                    c.text_format
                 FROM contracts c
                 LEFT JOIN organisations o ON c.contract_id = o.contract_id
                 LEFT JOIN sellers s ON c.contract_id = s.contract_id
@@ -928,8 +931,8 @@ def export_contracts_excel():
         id_fmt = workbook.add_format({'border': 1})
         filename_fmt = workbook.add_format({'border': 1})
 
-        # Headers - simplified to match requested image columns
-        headers = ['No', 'Date', 'Seller Name', 'Address', 'City', 'State', 'Mo no.', 'Email ID']
+        # Headers - simplified to match requested image columns plus product columns
+        headers = ['No', 'Date', 'Seller Name', 'Address', 'City', 'State', 'Mo no.', 'Email ID', 'Brand', 'Size', 'Unit', 'Unit rate', 'Total rate']
         for c, h in enumerate(headers):
             worksheet.write(0, c, h, header_fmt)
 
@@ -942,6 +945,11 @@ def export_contracts_excel():
         worksheet.set_column(5, 5, 20)  # State
         worksheet.set_column(6, 6, 18)  # Mo no.
         worksheet.set_column(7, 7, 32)  # Email ID
+        worksheet.set_column(8, 8, 28)  # Brand
+        worksheet.set_column(9, 9, 12)  # Size
+        worksheet.set_column(10, 10, 12)  # Unit
+        worksheet.set_column(11, 11, 14)  # Unit rate
+        worksheet.set_column(12, 12, 14)  # Total rate
 
         # Helper to parse city and state from seller_address.
         # Tries to extract a pincode if present like 'STATE-389151' or trailing pincode,
@@ -977,6 +985,21 @@ def export_contracts_excel():
             'ODISHA','PUNJAB','RAJASTHAN','SIKKIM','TAMIL NADU','TELANGANA','TRIPURA','UTTAR PRADESH','UTTARAKHAND','WEST BENGAL',
             'DELHI','PONDICHERRY','ANDAMAN','LAKSHADWEEP','JAMMU AND KASHMIR','LADAKH'
         ]
+
+        # Patterns to extract product quantity/unit/prices and size from free text
+        qty_unit_pattern = re.compile(r"(\d+[\d,\.]*?)\s+(pieces|pairs|nos|pcs|kg|litre|litres|ltrs|meter|m)\b\s+([\d,]+(?:\.[\d]+)?)\s+NA\s+([\d,]+(?:\.[\d]+)?)", re.IGNORECASE)
+        size_pattern = re.compile(r"\bSize\b\s*[:\-]?\s*([0-9]+(?:[.,][0-9]+)?)", re.IGNORECASE)
+
+        def clean_contact_value(val):
+            """Remove leading labels/punctuation from contact values for Excel export."""
+            if not val:
+                return ''
+            s = str(val).strip()
+            # Remove common leading label words like Contact, Contact No, Mob, Phone
+            s = re.sub(r'^\s*(?:Contact(?:\s*No\.?| No)?|Mob(?:ile)?|Mo\.?|Phone|Tel|Telephone)\s*[:\-–—\s]*', '', s, flags=re.IGNORECASE)
+            # Remove any remaining leading colons/dashes/spaces
+            s = re.sub(r'^[\s:\-–—]+', '', s)
+            return s.strip()
 
         def parse_city_state(address):
             if not address:
@@ -1045,8 +1068,32 @@ def export_contracts_excel():
             seller_name = r.get('company_name') or ''
             address = r.get('seller_address') or ''
             city, state = parse_city_state(address)
-            mo_no = r.get('seller_contact_no') or ''
+            mo_no = clean_contact_value(r.get('seller_contact_no') or '')
             email = r.get('seller_email_id') or ''
+
+            # Product-level defaults
+            brand = r.get('product_brands') or ''
+            size_val = ''
+            unit_val = ''
+            unit_rate = ''
+            total_rate = ''
+
+            # Try parsing from extracted text_format if present
+            text_format = r.get('text_format') or ''
+            if text_format:
+                try:
+                    msize = size_pattern.search(text_format)
+                    if msize:
+                        size_val = msize.group(1).replace(',', '').strip()
+
+                    mq = qty_unit_pattern.search(text_format)
+                    if mq:
+                        # ordered quantity = mq.group(1) but we only need unit and prices per request
+                        unit_val = mq.group(2).strip()
+                        unit_rate = mq.group(3).replace(',', '').strip()
+                        total_rate = mq.group(4).replace(',', '').strip()
+                except Exception:
+                    pass
 
             worksheet.write(row_idx, 0, idx, id_fmt)
             worksheet.write(row_idx, 1, date_str, cell_fmt)
@@ -1056,6 +1103,11 @@ def export_contracts_excel():
             worksheet.write(row_idx, 5, state, cell_fmt)
             worksheet.write(row_idx, 6, mo_no, cell_fmt)
             worksheet.write(row_idx, 7, email, cell_fmt)
+            worksheet.write(row_idx, 8, brand, cell_fmt)
+            worksheet.write(row_idx, 9, size_val, cell_fmt)
+            worksheet.write(row_idx, 10, unit_val, cell_fmt)
+            worksheet.write(row_idx, 11, unit_rate, cell_fmt)
+            worksheet.write(row_idx, 12, total_rate, cell_fmt)
 
             row_idx += 1
 
